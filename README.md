@@ -74,18 +74,42 @@ You can also open it from the command palette: `Ctrl+Shift+P` -> **"Reduce Log i
 
 ## What It Does
 
-Log Reducer runs 8 transforms in sequence. Each can be toggled on/off in VS Code settings under `logreducer.*`.
+Log Reducer runs 9 transforms in sequence. Each can be toggled on/off in VS Code settings under `logreducer.*`.
 
 | Transform | What it removes | Example |
 |-----------|----------------|---------|
 | **Strip ANSI** | Color codes, control characters | `\x1b[31mERROR\x1b[0m` -> `ERROR` |
 | **Normalize Whitespace** | Trailing spaces, excessive blank lines | 5 blank lines -> 1 |
-| **Shorten IDs** | UUIDs, hex hashes, JWTs, long tokens | `a]f8c3d2e-1a2b-...` -> `$1` |
+| **Shorten IDs** | UUIDs, hex hashes, JWTs, long tokens | `af8c3d2e-1a2b-...` -> `$1` |
 | **Simplify Timestamps** | Date portions of timestamps | `2024-01-15T14:32:01.123Z` -> `14:32:01` |
+| **Filter Noise** | DEBUG/TRACE, health checks, heartbeats | Collapsed to `[... N lines omitted ...]` |
+| **Compress Prefix** | Repeated log prefixes, separator lines | 8 lines with same prefix -> 1 header + indented suffixes |
 | **Deduplicate Lines** | Consecutive similar lines | 6 request lines -> `[x6] template \| N = 1,2,3,4,5,6` |
 | **Detect Cycles** | Repeating multi-line blocks | 5 identical 3-line blocks -> 1 block + `[... repeated 4 more times ...]` |
-| **Filter Noise** | DEBUG/TRACE, health checks, heartbeats | Collapsed to `[... N lines omitted ...]` |
 | **Fold Stack Traces** | Framework frames, absolute paths, duplicate traces | 80 frames -> 8 user frames + summaries |
+
+### Compress Prefix in detail
+
+When 3+ consecutive lines share the same `timestamp - module - LEVEL -` prefix, the prefix is stated once as a header and the message suffixes are indented:
+
+```
+20:11:07 - app.video_encoder - INFO - Total input frames: 450
+20:11:07 - app.video_encoder - INFO - input_frame_count (PNG files): 450
+20:11:07 - app.video_encoder - INFO - original_fps (from source): 29.97
+20:11:07 - app.video_encoder - INFO - target_fps (requested): 30
+20:11:07 - app.video_encoder - INFO - expected input duration: 15.015000s
+```
+becomes:
+```
+20:11:07 - app.video_encoder - INFO:
+  Total input frames: 450
+  input_frame_count (PNG files): 450
+  original_fps (from source): 29.97
+  target_fps (requested): 30
+  expected input duration: 15.015000s
+```
+
+Decorative separator lines (`====`, `----`, `****`) are also silently stripped since they carry no semantic information.
 
 ### Fold Stack Traces in detail
 
@@ -111,7 +135,7 @@ When consecutive lines share the same structure but differ in specific values, i
 Not yet published to the VS Code Marketplace. To install from source:
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/imankha/log-reducer.git
 cd log-reducer
 npm install
 npm run compile
@@ -132,25 +156,19 @@ All settings under `logreducer.*` in VS Code settings. Every transform defaults 
 | `logreducer.deduplicateLines` | Collapse consecutive identical/similar lines |
 | `logreducer.detectCycles` | Find repeating multi-line blocks, show once + count |
 | `logreducer.filterNoise` | Remove DEBUG, health checks, heartbeats |
+| `logreducer.compressPrefix` | Factor out repeated log prefixes, strip separator lines |
 | `logreducer.foldStackTraces` | Collapse framework stack frames, shorten paths |
 
-## Development
+## Contributing
 
-```bash
-npm install
-npm run compile    # one-time build
-npm run watch      # rebuild on save
-npm test           # run fixture tests
-```
-
-Tests use fixture files under `test/fixtures/`. Each fixture has `input.log` and `expected.log`. To add a test, create a new folder and register it in `test/runFixtures.ts`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test, and add new transforms.
 
 ## Design Decisions
 
 - **Token reduction over line reduction**: Stats are reported in tokens (whitespace-split), not lines, since that's what matters for AI context windows.
 - **No ID legend**: Replaced IDs get `$1`, `$2` placeholders with no mapping. The original IDs are almost never relevant when debugging with an AI.
 - **Clipboard workflow**: Copy -> shortcut -> review -> paste. No file picker or selection mode.
-- **Transform order matters**: IDs and timestamps are shortened before dedup so lines differing only by ID/time become identical.
+- **Transform order matters**: IDs and timestamps are shortened before dedup so lines differing only by ID/time become identical. Noise is filtered before prefix compression so separator lines don't break grouping.
 - **Rule-based, no AI**: Zero API calls, works offline, deterministic output, no API keys needed.
 - **Zero runtime dependencies**: Pure TypeScript, nothing beyond the VS Code API.
 
