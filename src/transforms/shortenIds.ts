@@ -3,14 +3,18 @@ import { Transform } from '../types';
 // UUID v4: 8-4-4-4-12 hex pattern
 const UUID_REGEX = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g;
 
-// Long hex strings (16+ chars, likely hashes/tokens/commit SHAs)
-const HEX_REGEX = /\b[0-9a-fA-F]{16,}\b/g;
+// Hex strings (7+ chars, must contain at least one a-f letter to avoid matching pure numbers)
+const HEX_REGEX = /\b(?=[0-9a-fA-F]*[a-fA-F])[0-9a-fA-F]{7,}\b/g;
 
 // JWT-like tokens (three base64url segments separated by dots)
 const JWT_REGEX = /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b/g;
 
 // Generic long alphanumeric tokens (20+ chars, mixed case/digits, not plain words)
 const TOKEN_REGEX = /\b(?=[A-Za-z]*\d)(?=\d*[A-Za-z])[A-Za-z0-9]{20,}\b/g;
+
+// Generated IDs with underscores (e.g., export_1771908476037_2dian9n, clip_1771954950335_lahbf8a)
+// Must contain at least one underscore AND at least one digit AND at least one letter, 20+ chars.
+const UNDERSCORE_ID_REGEX = /\b(?=[A-Za-z0-9_]*_)(?=[A-Za-z0-9_]*\d)(?=[A-Za-z0-9_]*[a-zA-Z])[A-Za-z0-9_]{20,}\b/g;
 
 export const shortenIds: Transform = {
   name: 'Shorten IDs',
@@ -43,6 +47,9 @@ export const shortenIds: Transform = {
 
     // Generic long tokens
     result = result.replace(TOKEN_REGEX, (match) => getPlaceholder(match));
+
+    // Underscore-containing generated IDs (least specific, last)
+    result = result.replace(UNDERSCORE_ID_REGEX, (match) => getPlaceholder(match));
 
     return result;
   },

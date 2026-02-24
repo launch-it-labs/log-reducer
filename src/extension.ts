@@ -26,9 +26,9 @@ export function activate(context: vscode.ExtensionContext) {
       // Read settings — derive keys from ALL_TRANSFORMS so adding a
       // new transform automatically picks up its setting.
       const config = vscode.workspace.getConfiguration('logreducer');
-      const options: PipelineOptions = Object.fromEntries(
+      const options = Object.fromEntries(
         ALL_TRANSFORMS.map(t => [t.settingKey, config.get(t.settingKey, true)])
-      );
+      ) as PipelineOptions;
 
       // Run the minification pipeline
       const result = minify(clipboardText, options);

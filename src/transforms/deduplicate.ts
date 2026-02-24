@@ -62,7 +62,7 @@ export const deduplicate: Transform = {
       if (allTokens[0].length > 0) {
         for (let pos = 0; pos < allTokens[0].length; pos++) {
           const firstVal = allTokens[0][pos];
-          if (allTokens.some(tokens => tokens[pos] !== firstVal)) {
+          if (allTokens.some(tokens => (tokens[pos] ?? '') !== firstVal)) {
             varyingPositions.add(pos);
           }
         }

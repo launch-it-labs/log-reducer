@@ -79,7 +79,7 @@ app.routers.export.multi_clip:
     INFO - [Chapters] Adding chapters to video
     INFO - [Chapters] Successfully added chapters
     INFO - [Multi-Clip] Added 4 chapters to output
-    INFO - [Multi-Clip Export] Final output: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\final_export_1771905945395_71qs6zz.mp4
+    INFO - [Multi-Clip Export] Final output: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\$5.mp4
     INFO - [Multi-Clip Export] Video duration: 58.77s
     INFO - [Multi-Clip Export] Restored user context: a
     ERROR - [Multi-Clip Export] Failed to save working video: Profile ID not set — call /api/auth/init first, or set X-Profile-ID header on the request
@@ -97,8 +97,8 @@ Traceback (most recent call last):
 RuntimeError: Profile ID not set — call /api/auth/init first, or set X-Profile-ID header on the request
 20:14:19 - app.middleware.db_sync - WARNING - [SLOW REQUEST] POST /api/export/multi-clip - total 499.17s (sync: 0.00s, handler: 499.17s)
 INFO:     127.0.0.1:64120 - "POST /api/export/multi-clip HTTP/1.1" 200 OK
-20:14:19 - app.websocket - WARNING - [WS] Failed to send pong to export_1771905945395_71qs6zz: received 1005 (no status received [internal]); then sent 1005 (no status received [internal])
-20:14:19 - app.websocket - INFO - WebSocket disconnected for export_id: export_1771905945395_71qs6zz (0 clients remaining)
+20:14:19 - app.websocket - WARNING - [WS] Failed to send pong to $6: received 1005 (no status received [internal]); then sent 1005 (no status received [internal])
+20:14:19 - app.websocket - INFO - WebSocket disconnected for export_id: $6 (0 clients remaining)
 [... 1 lines omitted ...]
 INFO:     127.0.0.1:65104 - "GET /api/projects HTTP/1.1" 200 OK
 INFO:     127.0.0.1:65105 - "PUT /api/clips/projects/64/clips/86 HTTP/1.1" 200 OK
@@ -108,12 +108,12 @@ INFO:     127.0.0.1:55461 - "GET /api/projects/64 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:65387 - "POST /api/export/projects/64/overlay/actions HTTP/1.1" 404 Not Found
 [... above 2-line block repeated 10 more times ...]
 [... 1 lines omitted ...]
-20:15:30 - app.websocket - INFO - [WS] WebSocket endpoint HIT for export_id: export_1771906530058_jz8uguw
-INFO:     ('127.0.0.1', 61454) - "WebSocket /ws/export/export_1771906530058_jz8uguw" [accepted]
-20:15:30 - app.websocket - INFO - [WS] WebSocket CONNECTED for export_id: export_1771906530058_jz8uguw (now 1 clients)
+20:15:30 - app.websocket - INFO - [WS] WebSocket endpoint HIT for export_id: $7
+INFO:     ('127.0.0.1', 61454) - "WebSocket /ws/export/$7" [accepted]
+20:15:30 - app.websocket - INFO - [WS] WebSocket CONNECTED for export_id: $7 (now 1 clients)
 [... 1 lines omitted ...]
 20:15:30 - app.routers.export.overlay - INFO - [Overlay Render] Starting for project 64, user: a, Modal: False
 INFO:     127.0.0.1:49864 - "POST /api/export/render-overlay HTTP/1.1" 404 Not Found
-20:15:30 - app.websocket - INFO - [WS] Client disconnected gracefully for export_1771906530058_jz8uguw
-20:15:30 - app.websocket - INFO - WebSocket disconnected for export_id: export_1771906530058_jz8uguw (0 clients remaining)
+20:15:30 - app.websocket - INFO - [WS] Client disconnected gracefully for $7
+20:15:30 - app.websocket - INFO - WebSocket disconnected for export_id: $7 (0 clients remaining)
 [... 1 lines omitted ...]

@@ -46,6 +46,11 @@
           "default": true,
           "description": "Replace UUIDs, hex strings, and long tokens with short placeholders"
         },
+        "logreducer.shortenUrls": {
+          "type": "boolean",
+          "default": true,
+          "description": "Strip query parameters and collapse long URL paths"
+        },
         "logreducer.simplifyTimestamps": {
           "type": "boolean",
           "default": true,
@@ -64,7 +69,12 @@
         "logreducer.filterNoise": {
           "type": "boolean",
           "default": true,
-          "description": "Remove DEBUG lines, health checks, and heartbeat noise"
+          "description": "Remove DEBUG lines, health checks, heartbeat noise, and devtools artifacts"
+        },
+        "logreducer.stripSourceLocations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Strip browser console file:line prefixes when a [Tag] is present"
         },
         "logreducer.foldStackTraces": {
           "type": "boolean",
@@ -88,9 +98,6 @@
   "devDependencies": {
     "@types/vscode": "^1.85.0",
     "@types/node": "^20.0.0",
-    "@types/glob": "^8.1.0",
-    "typescript": "^5.3.0",
-    "@vscode/test-electron": "^2.3.0",
-    "glob": "^10.3.0"
+    "typescript": "^5.3.0"
   }
 }

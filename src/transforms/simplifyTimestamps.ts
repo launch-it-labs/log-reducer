@@ -1,5 +1,7 @@
 import { Transform } from '../types';
-import { EPOCH_PLACEHOLDER } from '../skeleton';
+
+/** Placeholder emitted for epoch-millisecond values. Consumed by skeleton.ts. */
+export const EPOCH_PLACEHOLDER = '<epoch>';
 
 // ISO 8601 timestamps: 2024-01-15T14:32:01.123456Z, with optional timezone/fractional
 const ISO_TIMESTAMP_REGEX = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:?\d{2})?/g;

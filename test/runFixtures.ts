@@ -37,6 +37,32 @@ const TEST_CASES: TestCase[] = [
 let passed = 0;
 let failed = 0;
 
+// ── Config sync check ─────────────────────────────────────────────────
+// Verify that every transform's settingKey has a matching entry in package.json.
+const PKG_PATH = path.join(__dirname, '..', '..', 'package.json');
+const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8'));
+const configProps: Record<string, unknown> = pkg.contributes?.configuration?.properties ?? {};
+const configKeys = new Set(Object.keys(configProps).map(k => k.replace('logreducer.', '')));
+const codeKeys = ALL_TRANSFORMS.map(t => t.settingKey);
+
+for (const key of codeKeys) {
+  if (!configKeys.has(key)) {
+    console.log(`  FAIL  config-sync: settingKey "${key}" missing from package.json`);
+    failed++;
+  }
+}
+for (const key of configKeys) {
+  if (!codeKeys.includes(key)) {
+    console.log(`  FAIL  config-sync: package.json key "logreducer.${key}" has no matching transform`);
+    failed++;
+  }
+}
+if (configKeys.size === codeKeys.length && codeKeys.every(k => configKeys.has(k))) {
+  console.log(`  PASS  config-sync (${codeKeys.length} keys match)`);
+  passed++;
+}
+
+// ── Fixture tests ─────────────────────────────────────────────────────
 for (const tc of TEST_CASES) {
   const fixtureDir = path.join(FIXTURES_DIR, tc.name);
   const inputPath = path.join(fixtureDir, 'input.log');

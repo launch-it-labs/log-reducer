@@ -120,7 +120,7 @@ export const compressPrefix: Transform = {
         }
 
         // Sub-group by time within the module group
-        emitTimeGroups(entries, i, j, singleLevel, result);
+        result.push(...emitTimeGroups(entries, i, j, singleLevel));
       }
 
       i = j;
@@ -135,8 +135,8 @@ function emitTimeGroups(
   start: number,
   end: number,
   singleLevel: boolean,
-  result: string[],
-): void {
+): string[] {
+  const lines: string[] = [];
   let k = start;
   while (k < end) {
     const p = entries[k].parsed!;
@@ -153,23 +153,24 @@ function emitTimeGroups(
       for (let n = k; n < m; n++) {
         const q = entries[n].parsed!;
         if (!singleLevel) {
-          result.push(`  ${q.time} - ${q.level} - ${q.message}`);
+          lines.push(`  ${q.time} - ${q.level} - ${q.message}`);
         } else {
-          result.push(`  ${q.time} - ${q.message}`);
+          lines.push(`  ${q.time} - ${q.message}`);
         }
       }
     } else {
       // Time sub-group: time header + indented messages
-      result.push(`  ${p.time}:`);
+      lines.push(`  ${p.time}:`);
       for (let n = k; n < m; n++) {
         const q = entries[n].parsed!;
         if (!singleLevel) {
-          result.push(`    ${q.level} - ${q.message}`);
+          lines.push(`    ${q.level} - ${q.message}`);
         } else {
-          result.push(`    ${q.message}`);
+          lines.push(`    ${q.message}`);
         }
       }
     }
     k = m;
   }
+  return lines;
 }

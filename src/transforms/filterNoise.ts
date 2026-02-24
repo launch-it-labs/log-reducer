@@ -36,6 +36,12 @@ const NOISE_PATTERNS: RegExp[] = [
 
   // Bare connection open/closed noise
   /^INFO:\s+connection (?:open|closed)\s*$/,
+
+  // Browser devtools noise
+  /Download the React DevTools/,
+
+  // Chrome caller annotations: "(anonymous) @ file.js:123" or "funcName @ file.js:123"
+  /^\s*(?:\(\w+\)|[a-zA-Z_$][\w$]*)\s+@\s+\S+\.\w+:\d+\s*$/,
 ];
 
 export const filterNoise: Transform = {

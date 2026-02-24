@@ -1,6 +1,6 @@
 [2026-02-23]
-18:35:54 - app.storage - INFO - Loaded profile f58f68c6 for user a from R2
-18:35:54 - app.session_init - INFO - Loaded existing profile f58f68c6 for user a
+18:35:54 - app.storage - INFO - Loaded profile $1 for user a from R2
+18:35:54 - app.session_init - INFO - Loaded existing profile $1 for user a
 18:35:54 - app.main - INFO - Default user 'a' session initialized
 18:35:54 - app.main - INFO - Orphaned export jobs recovery complete
 18:35:54 - app.services.modal_queue - INFO - [ModalQueue] Processing queue with local FFmpeg

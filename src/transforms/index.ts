@@ -1,9 +1,11 @@
 export { stripAnsi } from './stripAnsi';
 export { normalizeWhitespace } from './normalizeWhitespace';
 export { shortenIds } from './shortenIds';
+export { shortenUrls } from './shortenUrls';
 export { simplifyTimestamps } from './simplifyTimestamps';
 export { deduplicate } from './deduplicate';
 export { detectCycles } from './detectCycles';
 export { filterNoise } from './filterNoise';
 export { foldStackTraces } from './foldStackTraces';
 export { compressPrefix } from './compressPrefix';
+export { stripSourceLocations } from './stripSourceLocations';

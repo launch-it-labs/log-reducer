@@ -1,5 +1,7 @@
-/** Placeholder emitted by simplifyTimestamps for epoch-millisecond values. */
-export const EPOCH_PLACEHOLDER = '<epoch>';
+import { EPOCH_PLACEHOLDER } from './transforms/simplifyTimestamps';
+
+// Precompiled regex for the epoch placeholder (avoids rebuilding on every call)
+const EPOCH_RE = new RegExp(EPOCH_PLACEHOLDER.replace(/[<>]/g, '\\$&'), 'g');
 
 /**
  * Normalize a line into a "skeleton" for comparison.
@@ -14,6 +16,6 @@ export function skeleton(line: string): string {
     .replace(/\$\d+/g, '<ID>')        // Already-shortened IDs
     .replace(/\d+/g, '<N>')           // Numbers (no \b — matches 2574MB, v2, etc.)
     .replace(/\d{2}:\d{2}:\d{2}/g, '<T>')  // Times (HH:MM:SS)
-    .replace(new RegExp(EPOCH_PLACEHOLDER.replace(/[<>]/g, '\\$&'), 'g'), '<T>')
+    .replace(EPOCH_RE, '<T>')          // Epoch placeholders from timestamp transform
     .trim();
 }

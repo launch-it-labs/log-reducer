@@ -1,4 +1,6 @@
 import { Transform } from '../types';
+import { FRAME_PATTERNS, isFrameworkFrame, getFrameworkName } from './stackTrace/frameworkPatterns';
+import { shortenFilePaths } from './stackTrace/pathShortener';
 
 /**
  * Fold stack traces: collapse consecutive framework frames and shorten file paths.
@@ -29,57 +31,9 @@ function getIndent(line: string): string {
   return match ? match[1] : '    ';
 }
 
-// Patterns that indicate a stack frame line (checked after stripping prefix)
-const FRAME_PATTERNS = [
-  /^\s*at\s+/,                              // Java, Node.js, .NET
-  /^\s*File\s+"[^"]+",\s+line\s+\d+/,      // Python
-  /^\s*\S+\.go:\d+/,                        // Go
-  /^\t*\S+:\d+/,                            // Go alternative
-];
-
-// Framework/internal packages to collapse.
-// Each entry has a pattern to match and an optional human-readable name for summaries.
-const FRAMEWORKS: { pattern: RegExp; name: string | null }[] = [
-  // Java
-  { pattern: /java\.(lang|util|io|net|security)\./, name: 'java' },
-  { pattern: /javax\./, name: 'javax' },
-  { pattern: /sun\./, name: 'java' },
-  { pattern: /com\.sun\./, name: 'java' },
-  { pattern: /org\.springframework\./, name: 'spring' },
-  { pattern: /org\.apache\./, name: 'apache' },
-  // Node.js
-  { pattern: /node_modules\//, name: 'node_modules' },
-  { pattern: /\(internal\//, name: 'node' },
-  { pattern: /\(node:/, name: 'node' },
-  { pattern: /at Module\./, name: 'node' },
-  { pattern: /at Object\.Module/, name: null },
-  { pattern: /at Function\.Module/, name: null },
-  // Python
-  { pattern: /importlib\._bootstrap/, name: null },
-  { pattern: /importlib\._bootstrap_external/, name: null },
-  { pattern: /threading\.py/, name: null },
-  { pattern: /concurrent\/futures/, name: null },
-  { pattern: /asyncio\//, name: 'asyncio' },
-  { pattern: /anyio\//, name: 'anyio' },
-  { pattern: /uvicorn\//, name: 'uvicorn' },
-  { pattern: /starlette\//, name: 'starlette' },
-  { pattern: /fastapi\//, name: 'fastapi' },
-  { pattern: /werkzeug\//, name: 'werkzeug' },
-  { pattern: /django\/core\//, name: 'django' },
-  { pattern: /flask\/app\.py/, name: 'flask' },
-  { pattern: /contextlib\.py/, name: 'contextlib' },
-  // Go
-  { pattern: /net\/http/, name: 'net/http' },
-  { pattern: /runtime\//, name: 'runtime' },
-];
-
 function isFrameLine(line: string): boolean {
   const stripped = stripExcGroupPrefix(line);
   return FRAME_PATTERNS.some((p) => p.test(stripped));
-}
-
-function isFrameworkFrame(line: string): boolean {
-  return FRAMEWORKS.some((f) => f.pattern.test(line));
 }
 
 function isCaretLine(line: string): boolean {
@@ -87,43 +41,10 @@ function isCaretLine(line: string): boolean {
   return /^\^+$/.test(stripped);
 }
 
-function getFrameworkName(line: string): string | null {
-  for (const f of FRAMEWORKS) {
-    if (f.pattern.test(line)) return f.name;
-  }
-  return null;
-}
-
-// Shorten absolute file paths to package-relative paths
-function shortenPath(filePath: string): string {
-  const normalized = filePath.replace(/\\/g, '/');
-
-  // site-packages/package/... → package/...
-  const siteIdx = normalized.lastIndexOf('site-packages/');
-  if (siteIdx !== -1) return normalized.substring(siteIdx + 'site-packages/'.length);
-
-  // Python stdlib: .../PythonXXX/Lib/foo.py → foo.py
-  const libMatch = normalized.match(/Python\d+\/Lib\/(.+)$/);
-  if (libMatch) return libMatch[1];
-
-  // Project source: strip common root patterns
-  for (const root of ['src/backend/', 'src/frontend/', 'backend/', 'frontend/', 'src/']) {
-    const idx = normalized.lastIndexOf(root);
-    if (idx !== -1) return normalized.substring(idx + root.length);
-  }
-
-  return filePath;
-}
-
-function shortenFilePaths(line: string): string {
-  return line.replace(/File "([^"]+)"/g, (_, p) => `File "${shortenPath(p)}"`);
-}
-
 // Check if a line is a code line belonging to the preceding frame.
 // Code lines are indented or have a | prefix. Lines starting at column 0
 // (after stripping \r) are never part of a frame.
 function isCodeLine(line: string, stripped: string): boolean {
-  // Must have leading whitespace or | prefix to be a code line
   const trimmedLine = line.replace(/\r$/, '');
   if (trimmedLine.length > 0 && !/^\s/.test(trimmedLine) && !/^\|/.test(trimmedLine)) return false;
   if (stripped === '') return false;
@@ -150,6 +71,19 @@ const CHAIN_PATTERNS = [
 function isChainIntro(line: string): boolean {
   const stripped = stripExcGroupPrefix(line).trim();
   return CHAIN_PATTERNS.some(p => p.test(stripped));
+}
+
+// Determines whether a line ends the trailing-exception-message collection.
+// These lines belong to a new log entry or a new traceback, not the current trace.
+function isTraceTerminator(line: string, stripped: string): boolean {
+  if (stripped === '') return true;
+  if (isFrameLine(line)) return true;
+  if (isChainIntro(line)) return true;
+  if (/^Traceback\s/.test(stripped)) return true;
+  if (/^\+\s*Exception Group/.test(stripped)) return true;
+  if (/^(INFO|ERROR|WARN|DEBUG|TRACE|FATAL)\b/.test(stripped)) return true;
+  if (/^\d{4}-\d{2}-\d{2}[\sT]/.test(stripped)) return true;
+  return false;
 }
 
 function foldFrameUnits(units: FrameUnit[]): string[] {
@@ -238,18 +172,11 @@ export const foldStackTraces: Transform = {
         // Fold framework frames
         const folded = foldFrameUnits(units);
 
-        // Collect trailing exception message lines (non-frame, non-empty, not a chain intro)
+        // Collect trailing exception message lines
         const traceBlock = [...folded];
         while (i < lines.length) {
           const stripped = stripExcGroupPrefix(lines[i]).trim();
-          if (stripped === '') break;
-          if (isFrameLine(lines[i])) break;
-          if (isChainIntro(lines[i])) break;
-          if (/^Traceback\s/.test(stripped)) break;
-          if (/^\+\s*Exception Group/.test(stripped)) break;
-          // Stop at regular log lines (timestamp or log-level prefix)
-          if (/^(INFO|ERROR|WARN|DEBUG|TRACE|FATAL)\b/.test(stripped)) break;
-          if (/^\d{4}-\d{2}-\d{2}[\sT]/.test(stripped)) break;
+          if (isTraceTerminator(lines[i], stripped)) break;
           traceBlock.push(lines[i]);
           i++;
         }
