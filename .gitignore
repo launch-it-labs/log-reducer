@@ -6,4 +6,5 @@ test/fixtures/**/actual.log
 package-lock.json
 .claude/settings.local.json
 .claude/todos/
+screenshots/
 nul
