@@ -34,6 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
         detectCycles: config.get('detectCycles', true),
         filterNoise: config.get('filterNoise', true),
         foldStackTraces: config.get('foldStackTraces', true),
+        compressPrefix: config.get('compressPrefix', true),
       };
 
       // Run the minification pipeline

@@ -15,8 +15,8 @@ const NOISE_PATTERNS: RegExp[] = [
   // Log levels: DEBUG and TRACE
   /\b(?:DEBUG|TRACE)\b/i,
 
-  // Health check endpoints
-  /(?:GET|POST|HEAD)\s+\/(?:health|healthz|healthcheck|readyz|livez|ready|alive|ping|status)\b/i,
+  // Health check endpoints (with optional path prefix like /api/)
+  /(?:GET|POST|HEAD)\s+\S*\/(?:health|healthz|healthcheck|readyz|livez|ready|alive|ping|status)\b/i,
   /health[\s_-]?check/i,
 
   // Heartbeat / keepalive
@@ -33,6 +33,9 @@ const NOISE_PATTERNS: RegExp[] = [
 
   // GC / memory noise
   /\bGC\b.*\b(?:pause|collected|freed)\b/i,
+
+  // Bare connection open/closed noise
+  /^INFO:\s+connection (?:open|closed)\s*$/,
 ];
 
 export const filterNoise: Transform = {

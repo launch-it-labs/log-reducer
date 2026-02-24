@@ -4,6 +4,7 @@ import {
   normalizeWhitespace,
   shortenIds,
   simplifyTimestamps,
+  compressPrefix,
   deduplicate,
   detectCycles,
   filterNoise,
@@ -20,9 +21,10 @@ const ALL_TRANSFORMS: Transform[] = [
   normalizeWhitespace,
   shortenIds,
   simplifyTimestamps,
+  filterNoise,
+  compressPrefix,
   deduplicate,
   detectCycles,
-  filterNoise,
   foldStackTraces,
 ];
 

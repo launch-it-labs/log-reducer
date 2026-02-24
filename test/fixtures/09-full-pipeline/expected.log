@@ -7,7 +7,7 @@
 14:32:03 INFO Request $1 completed
 [... above 4-line block repeated 3 more times ...]
 
-[... 2 lines omitted ...]
+[... 4 lines omitted ...]
 
 14:32:11 ERROR NullPointerException in UserService
     at com.myapp.service.UserService.getUser(UserService.java:45)

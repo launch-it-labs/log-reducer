@@ -13,6 +13,7 @@ export interface PipelineOptions {
   detectCycles: boolean;
   filterNoise: boolean;
   foldStackTraces: boolean;
+  compressPrefix: boolean;
 }
 
 export const DEFAULT_OPTIONS: PipelineOptions = {
@@ -24,4 +25,5 @@ export const DEFAULT_OPTIONS: PipelineOptions = {
   detectCycles: true,
   filterNoise: true,
   foldStackTraces: true,
+  compressPrefix: true,
 };

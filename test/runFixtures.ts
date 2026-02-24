@@ -31,6 +31,7 @@ const TEST_CASES: TestCase[] = [
   { name: '08-fold-stack-traces', dir: '08-fold-stack-traces', transform: (s) => foldStackTraces.apply(s) },
   { name: '09-full-pipeline', dir: '09-full-pipeline', transform: null },
   { name: '10-real-world-python', dir: '10-real-world-python', transform: null },
+  { name: '11-real-world-export', dir: '11-real-world-export', transform: null },
 ];
 
 let passed = 0;

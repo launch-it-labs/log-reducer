@@ -6,3 +6,4 @@ export { deduplicate } from './deduplicate';
 export { detectCycles } from './detectCycles';
 export { filterNoise } from './filterNoise';
 export { foldStackTraces } from './foldStackTraces';
+export { compressPrefix } from './compressPrefix';

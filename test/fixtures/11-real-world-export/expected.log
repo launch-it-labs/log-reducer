@@ -1,0 +1,118 @@
+2026-02-23 20:11:07 - app.ai_upscaler - INFO:
+  [EXPORT_PHASE] AI_UPSCALE END - 2026-02-23T20:11:07.007196
+  [EXPORT_PHASE] AI_UPSCALE DURATION - 301.55 seconds
+  ✓ Successfully processed 450/450 frames
+2026-02-23 20:11:07 - app.ai_upscaler.video_encoder - INFO - Total input frames: 450
+2026-02-23 20:11:07 - app.ai_upscaler.video_encoder - INFO - VIDEO ENCODING PARAMETERS
+2026-02-23 20:11:07 - app.ai_upscaler.video_encoder - INFO:
+  input_frame_count (PNG files): 450
+  original_fps (from source): 29.97002997002997
+  target_fps (requested): 30
+  expected input duration: 15.015000s
+  expected output duration: 15.015000s (should match)
+2026-02-23 20:11:07 - app.ai_upscaler.video_encoder - INFO:
+  Source and target FPS match (29.97002997002997fps → 30fps, no interpolation needed)
+  APPLYING SEGMENT SPEED/TRIM PROCESSING
+  Segment 0: source 0.00s-4.76s @ 1.0x speed
+2026-02-23 20:11:07 - app.ai_upscaler.video_encoder - INFO -   → Input frames: 143, Output frames: 143
+2026-02-23 20:11:07 - app.ai_upscaler.video_encoder - INFO - Segment 1: source 4.76s-6.93s @ 0.5x speed
+2026-02-23 20:11:07 - app.ai_upscaler.video_encoder - INFO -   → Input frames: 65, Output frames (2x): 130
+2026-02-23 20:11:07 - app.ai_upscaler.frame_interpolator - INFO - CUDA available: NVIDIA GeForce RTX 4060 Laptop GPU
+2026-02-23 20:11:09 - app.ai_upscaler.frame_interpolator - INFO:
+  Vulkan available: NVIDIA GeForce RTX 4060 Laptop GPU
+  RIFE CUDA available (local script)
+  FRAME INTERPOLATION BACKEND SELECTION
+  ✓ Using RIFE with CUDA (NVIDIA GeForce RTX 4060 Laptop GPU)
+2026-02-23 20:11:09 - app.ai_upscaler.frame_interpolator - INFO -   → Best quality AI-based frame interpolation
+2026-02-23 20:11:09 - app.ai_upscaler.video_encoder - INFO:
+  → Interpolation backend: rife_cuda (quality: best)
+  → Note: RIFE available for higher quality (use pre-processing for best results)
+  → Applying atempo=0.5 to audio for slow motion
+2026-02-23 20:11:09 - app.ai_upscaler.video_encoder - INFO - Segment 2: source 6.93s-15.02s @ 1.0x speed
+2026-02-23 20:11:09 - app.ai_upscaler.video_encoder - INFO -   → Input frames: 242, Output frames: 242
+2026-02-23 20:11:09 - app.ai_upscaler.video_encoder - INFO:
+  Expected output frames: 515
+  Filter complex: [0:v]trim=start=0.0:end=4.764830930537353,setpts=PTS-STARTPTS,fps=30[v0];[0:v]trim=start=4.764830930537353:end=6.928378,setpts=PTS-STARTPTS,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1:scd=fdiff:scd_threshold=10,setpts=PTS*2,fps=30[v1];[0:v]trim=start=6.928378:end=15.015,setpts=PTS-STARTPTS,fps=30[v2];[v0][v1][v2]concat=n=3:v=1:a=0[outv]
+  Expected output frame count: 515
+2026-02-23 20:11:09 - app.services.ffmpeg_service - INFO - Testing h264_nvenc...
+2026-02-23 20:11:09 - app.services.ffmpeg_service - WARNING -   h264_nvenc: Listed but not working (driver issue?)
+2026-02-23 20:11:09 - app.services.ffmpeg_service - INFO - Testing h264_qsv...
+2026-02-23 20:11:10 - app.services.ffmpeg_service - INFO -   h264_qsv: OK
+2026-02-23 20:11:10 - app.services.ffmpeg_service - INFO - Testing h264_amf...
+2026-02-23 20:11:11 - app.services.ffmpeg_service - WARNING -   h264_amf: Listed but not working (driver issue?)
+2026-02-23 20:11:11 - app.services.ffmpeg_service - INFO - Working H.264 encoders: ['libx264', 'h264_qsv']
+2026-02-23 20:11:11 - app.services.ffmpeg_service - INFO - Using Intel QuickSync encoder
+2026-02-23 20:11:11 - app.ai_upscaler.video_encoder - INFO:
+  Using Intel QuickSync GPU encoder (preset=veryfast, quality=23)
+  Encoding video with FAST settings at 30 fps...
+  Skipping pass 1 for FAST mode - using single-pass encoding
+  [EXPORT_PHASE] FFMPEG_ENCODE START - 2026-02-23T20:11:11.503066
+  Starting single-pass encoding...
+  Input framerate: 29.97002997002997fps
+  Output framerate: 30fps
+  GPU encoding: h264_qsv with params {'preset': 'veryfast', 'global_quality': '23'}
+2026-02-23 20:13:43 - app.ai_upscaler.video_encoder - INFO:
+  [EXPORT_PHASE] FFMPEG_ENCODE END - 2026-02-23T20:13:43.674449
+  [EXPORT_PHASE] FFMPEG_ENCODE DURATION - 152.17 seconds
+  Single-pass encoding complete!
+2026-02-23 20:13:44 - app.services.clip_pipeline - INFO - [Pipeline] Clip 0: Cleared GPU cache after processing
+2026-02-23 20:13:45 - app.services.clip_cache - INFO - [ClipCache] Cached: $1 (26.2 MB)
+2026-02-23 20:13:45 - app.services.clip_pipeline - INFO - [Pipeline] Clip 0: Cached result
+2026-02-23 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Clip 0 processed: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\processed_0.mp4
+2026-02-23 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Cleared GPU cache after clip 0
+2026-02-23 20:13:45 - app.services.clip_cache - INFO - [ClipCache] Cache HIT: $2
+2026-02-23 20:13:45 - app.services.clip_pipeline - INFO - [Pipeline] Clip 1: Cache HIT
+2026-02-23 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Clip 1 processed: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\processed_1.mp4
+2026-02-23 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Cleared GPU cache after clip 1
+2026-02-23 20:13:45 - app.services.clip_cache - INFO - [ClipCache] Cache HIT: $3
+2026-02-23 20:13:45 - app.services.clip_pipeline - INFO - [Pipeline] Clip 2: Cache HIT
+2026-02-23 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Clip 2 processed: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\processed_2.mp4
+2026-02-23 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Cleared GPU cache after clip 2
+2026-02-23 20:13:45 - app.services.clip_cache - INFO - [ClipCache] Cache HIT: $4
+2026-02-23 20:13:45 - app.services.clip_pipeline - INFO - [Pipeline] Clip 3: Cache HIT
+2026-02-23 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Clip 3 processed: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\processed_3.mp4
+2026-02-23 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Cleared GPU cache after clip 3
+2026-02-23 20:13:46 - app.services.transitions.cut - INFO - [CutTransition] Concatenating 4 clips
+2026-02-23 20:14:19 - app.routers.export.multi_clip - INFO:
+  [Chapters] Created metadata file with 4 chapters
+  [Chapters] Adding chapters to video
+  [Chapters] Successfully added chapters
+  [Multi-Clip] Added 4 chapters to output
+  [Multi-Clip Export] Final output: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\final_export_1771905945395_71qs6zz.mp4
+  [Multi-Clip Export] Video duration: 58.77s
+  [Multi-Clip Export] Restored user context: a
+2026-02-23 20:14:19 - app.routers.export.multi_clip - ERROR - [Multi-Clip Export] Failed to save working video: Profile ID not set — call /api/auth/init first, or set X-Profile-ID header on the request
+Traceback (most recent call last):
+  File "app/routers/export/multi_clip.py", line 1635, in export_multi_clip
+    raise upload_error[0]
+  File "app/routers/export/multi_clip.py", line 1608, in do_upload
+    result = upload_to_r2(captured_user_id, f"working_videos/{working_filename}", Path(final_output))
+  File "app/storage.py", line 321, in upload_to_r2
+    key = r2_key(user_id, relative_path)
+  File "app/storage.py", line 111, in r2_key
+    profile_id = get_current_profile_id()
+  File "app/profile_context.py", line 37, in get_current_profile_id
+    raise RuntimeError(
+RuntimeError: Profile ID not set — call /api/auth/init first, or set X-Profile-ID header on the request
+2026-02-23 20:14:19 - app.middleware.db_sync - WARNING - [SLOW REQUEST] POST /api/export/multi-clip - total 499.17s (sync: 0.00s, handler: 499.17s)
+INFO:     127.0.0.1:64120 - "POST /api/export/multi-clip HTTP/1.1" 200 OK
+2026-02-23 20:14:19 - app.websocket - WARNING - [WS] Failed to send pong to export_1771905945395_71qs6zz: received 1005 (no status received [internal]); then sent 1005 (no status received [internal])
+2026-02-23 20:14:19 - app.websocket - INFO - WebSocket disconnected for export_id: export_1771905945395_71qs6zz (0 clients remaining)
+[... 1 lines omitted ...]
+INFO:     127.0.0.1:65104 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65105 - "PUT /api/clips/projects/64/clips/86 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55461 - "GET /api/projects/64 HTTP/1.1" 200 OK
+[x2] INFO:     127.0.0.1:{N} - "GET /api/export/projects/64/overlay-data HTTP/1.1" 200 OK | N = 55624, 62032
+2026-02-23 20:14:26 - app.routers.export.overlay - INFO - [Overlay Action] project=64, action=add_keyframe
+INFO:     127.0.0.1:65387 - "POST /api/export/projects/64/overlay/actions HTTP/1.1" 404 Not Found
+[... above 2-line block repeated 10 more times ...]
+[... 1 lines omitted ...]
+2026-02-23 20:15:30 - app.websocket - INFO - [WS] WebSocket endpoint HIT for export_id: export_1771906530058_jz8uguw
+INFO:     ('127.0.0.1', 61454) - "WebSocket /ws/export/export_1771906530058_jz8uguw" [accepted]
+2026-02-23 20:15:30 - app.websocket - INFO - [WS] WebSocket CONNECTED for export_id: export_1771906530058_jz8uguw (now 1 clients)
+[... 1 lines omitted ...]
+2026-02-23 20:15:30 - app.routers.export.overlay - INFO - [Overlay Render] Starting for project 64, user: a, Modal: False
+INFO:     127.0.0.1:49864 - "POST /api/export/render-overlay HTTP/1.1" 404 Not Found
+2026-02-23 20:15:30 - app.websocket - INFO - [WS] Client disconnected gracefully for export_1771906530058_jz8uguw
+2026-02-23 20:15:30 - app.websocket - INFO - WebSocket disconnected for export_id: export_1771906530058_jz8uguw (0 clients remaining)
+[... 1 lines omitted ...]
