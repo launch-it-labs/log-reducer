@@ -1,0 +1,11 @@
+INFO: Application starting
+[... 3 lines omitted ...]
+INFO: All modules loaded
+[... 3 lines omitted ...]
+INFO: Processing user request
+[... 2 lines omitted ...]
+INFO: Request processed successfully
+[... 4 lines omitted ...]
+INFO: User logged in
+[... 1 lines omitted ...]
+WARN: Slow query detected (2.5s)

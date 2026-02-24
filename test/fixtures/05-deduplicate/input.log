@@ -1,0 +1,12 @@
+INFO: Processing request 1
+INFO: Processing request 2
+INFO: Processing request 3
+INFO: Processing request 4
+INFO: Processing request 5
+INFO: Processing request 6
+ERROR: Connection failed
+WARN: Retrying connection attempt 1
+WARN: Retrying connection attempt 2
+WARN: Retrying connection attempt 3
+WARN: Retrying connection attempt 4
+INFO: Connected successfully

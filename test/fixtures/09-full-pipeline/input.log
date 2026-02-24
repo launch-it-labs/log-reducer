@@ -1,0 +1,39 @@
+[32m2024-01-15T14:32:01.123456Z INFO[0m Application started
+[36m2024-01-15T14:32:01.234567Z DEBUG[0m Loading configuration from /etc/app/config.yaml
+[36m2024-01-15T14:32:01.345678Z DEBUG[0m Connecting to database
+[32m2024-01-15T14:32:02.000000Z INFO[0m Connected to database
+
+
+[32m2024-01-15T14:32:03.000000Z INFO[0m Processing request 550e8400-e29b-41d4-a716-446655440000
+[36m2024-01-15T14:32:03.100000Z DEBUG[0m Validating input for request 550e8400-e29b-41d4-a716-446655440000
+[32m2024-01-15T14:32:03.200000Z INFO[0m Request 550e8400-e29b-41d4-a716-446655440000 completed
+
+[32m2024-01-15T14:32:04.000000Z INFO[0m Processing request 7c9e6679-7425-40de-944b-e07fc1f90ae7
+[36m2024-01-15T14:32:04.100000Z DEBUG[0m Validating input for request 7c9e6679-7425-40de-944b-e07fc1f90ae7
+[32m2024-01-15T14:32:04.200000Z INFO[0m Request 7c9e6679-7425-40de-944b-e07fc1f90ae7 completed
+
+[32m2024-01-15T14:32:05.000000Z INFO[0m Processing request a1234567-b890-c123-d456-e78901234567
+[36m2024-01-15T14:32:05.100000Z DEBUG[0m Validating input for request a1234567-b890-c123-d456-e78901234567
+[32m2024-01-15T14:32:05.200000Z INFO[0m Request a1234567-b890-c123-d456-e78901234567 completed
+
+[32m2024-01-15T14:32:06.000000Z INFO[0m Processing request deadbeef-1234-5678-9abc-def012345678
+[36m2024-01-15T14:32:06.100000Z DEBUG[0m Validating input for request deadbeef-1234-5678-9abc-def012345678
+[32m2024-01-15T14:32:06.200000Z INFO[0m Request deadbeef-1234-5678-9abc-def012345678 completed
+
+[36m2024-01-15T14:32:07.000000Z DEBUG[0m heartbeat check: ok
+[36m2024-01-15T14:32:08.000000Z DEBUG[0m heartbeat check: ok
+[36m2024-01-15T14:32:09.000000Z DEBUG[0m heartbeat check: ok
+[32m2024-01-15T14:32:10.000000Z INFO[0m GET /healthz 200 OK
+
+[31m2024-01-15T14:32:11.000000Z ERROR[0m NullPointerException in UserService
+    at com.myapp.service.UserService.getUser(UserService.java:45)
+    at com.myapp.controller.UserController.handleRequest(UserController.java:78)
+    at com.myapp.controller.UserController.doGet(UserController.java:32)
+    at javax.servlet.http.HttpServlet.service(HttpServlet.java:750)
+    at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:227)
+    at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:162)
+    at org.springframework.web.filter.OncePerRequestFilter.doFilterInternal(OncePerRequestFilter.java:100)
+    at com.myapp.Application.main(Application.java:12)
+    at java.lang.reflect.Method.invoke(Method.java:498)
+
+[32m2024-01-15T14:32:12.000000Z INFO[0m Recovery initiated

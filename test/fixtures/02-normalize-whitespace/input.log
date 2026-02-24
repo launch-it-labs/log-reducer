@@ -1,0 +1,19 @@
+
+
+INFO: Starting application
+
+DEBUG: Loading config
+
+
+INFO: Config loaded
+
+
+WARNING: Slow query detected
+
+
+ERROR: Connection timeout
+INFO: Retrying...
+
+INFO: Connected
+
+

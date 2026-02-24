@@ -1,0 +1,21 @@
+INFO: Starting sync cycle
+INFO: Fetching data from upstream
+INFO: Processing 50 records
+INFO: Sync complete
+INFO: Starting sync cycle
+INFO: Fetching data from upstream
+INFO: Processing 50 records
+INFO: Sync complete
+INFO: Starting sync cycle
+INFO: Fetching data from upstream
+INFO: Processing 50 records
+INFO: Sync complete
+INFO: Starting sync cycle
+INFO: Fetching data from upstream
+INFO: Processing 50 records
+INFO: Sync complete
+INFO: Starting sync cycle
+INFO: Fetching data from upstream
+INFO: Processing 50 records
+INFO: Sync complete
+ERROR: Upstream server returned 500

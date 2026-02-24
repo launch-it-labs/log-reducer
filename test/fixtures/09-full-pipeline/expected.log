@@ -1,0 +1,20 @@
+14:32:01 INFO Application started
+[... 2 lines omitted ...]
+14:32:02 INFO Connected to database
+
+14:32:03 INFO Processing request $1
+[... 1 lines omitted ...]
+14:32:03 INFO Request $1 completed
+[... above 4-line block repeated 3 more times ...]
+
+[... 2 lines omitted ...]
+
+14:32:11 ERROR NullPointerException in UserService
+    at com.myapp.service.UserService.getUser(UserService.java:45)
+    at com.myapp.controller.UserController.handleRequest(UserController.java:78)
+    at com.myapp.controller.UserController.doGet(UserController.java:32)
+    [... 4 framework frames (javax, apache, spring) omitted ...]
+    at com.myapp.Application.main(Application.java:12)
+    [... 1 framework frames (java) omitted ...]
+
+14:32:12 INFO Recovery initiated

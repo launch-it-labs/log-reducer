@@ -1,0 +1,53 @@
+2026-02-23 18:35:54 - app.storage - INFO - Loaded profile f58f68c6 for user a from R2
+2026-02-23 18:35:54 - app.session_init - INFO - Loaded existing profile f58f68c6 for user a
+2026-02-23 18:35:54 - app.main - INFO - Default user 'a' session initialized
+2026-02-23 18:35:54 - app.main - INFO - Orphaned export jobs recovery complete
+2026-02-23 18:35:54 - app.services.modal_queue - INFO - [ModalQueue] Processing queue with local FFmpeg
+2026-02-23 18:35:54 - app.main - INFO - Modal queue: no pending tasks found
+INFO:     Application startup complete.
+INFO:     127.0.0.1:55636 - "POST /api/auth/init HTTP/1.1" 200 OK
+2026-02-23 18:36:07 - app.storage - INFO - R2 client initialized for bucket: reel-ballers-users
+INFO:     127.0.0.1:58756 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58761 - "GET /api/games/pending-uploads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58764 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58763 - "GET /api/downloads/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58760 - "GET /api/games HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55115 - "GET /api/exports/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56480 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56483 - "GET /storage/warmup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56488 - "GET /api/downloads/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56487 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56484 - "GET /api/games/pending-uploads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57237 - "GET /api/games HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55169 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53521 - "GET /api/exports/unacknowledged HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   [... 3 framework frames (starlette, anyio) omitted ...]
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   [... 10 framework frames (uvicorn, fastapi, starlette, contextlib) omitted ...]
+    |   File "app/middleware/db_sync.py", line 107, in dispatch
+    |     response = await call_next(request)
+    |   [... 6 framework frames (starlette, contextlib) omitted ...]
+    |   File "app/main.py", line 97, in dispatch
+    |     response = await call_next(request)
+    |   [... 16 framework frames (starlette, fastapi) omitted ...]
+    |   File "app/routers/exports.py", line 745, in list_unacknowledged_exports
+    |     exports=[
+    |   File "app/routers/exports.py", line 746, in <listcomp>
+    |     ExportJobResponse(
+    |   File "pydantic/main.py", line 250, in __init__
+    |     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+    | pydantic_core._pydantic_core.ValidationError: 1 validation error for ExportJobResponse
+    | project_id
+    |   Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]
+    |     For further information visit https://errors.pydantic.dev/2.12/v/int_type
+    +------------------------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  [... duplicate traceback omitted ...]
+INFO:     127.0.0.1:51573 - "GET /api/projects HTTP/1.1" 200 OK

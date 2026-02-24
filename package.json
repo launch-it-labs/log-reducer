@@ -1,0 +1,91 @@
+{
+  "name": "logreducer",
+  "displayName": "Log Reducer",
+  "description": "Reduce log files for AI consumption — strip noise, deduplicate, shorten IDs, fold stack traces",
+  "version": "0.1.0",
+  "publisher": "logreducer",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:logreducer.reduceClipboard"
+  ],
+  "main": "./out/src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "logreducer.reduceClipboard",
+        "title": "Reduce Log in Clipboard"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "logreducer.reduceClipboard",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r"
+      }
+    ],
+    "configuration": {
+      "title": "Log Reducer",
+      "properties": {
+        "logreducer.stripAnsi": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remove ANSI color codes and control characters"
+        },
+        "logreducer.normalizeWhitespace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Collapse excessive blank lines and trim trailing spaces"
+        },
+        "logreducer.shortenIds": {
+          "type": "boolean",
+          "default": true,
+          "description": "Replace UUIDs, hex strings, and long tokens with short placeholders"
+        },
+        "logreducer.simplifyTimestamps": {
+          "type": "boolean",
+          "default": true,
+          "description": "Shorten verbose timestamp formats"
+        },
+        "logreducer.deduplicateLines": {
+          "type": "boolean",
+          "default": true,
+          "description": "Collapse consecutive identical or near-identical lines"
+        },
+        "logreducer.detectCycles": {
+          "type": "boolean",
+          "default": true,
+          "description": "Find repeating multi-line blocks and show once with count"
+        },
+        "logreducer.filterNoise": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remove DEBUG lines, health checks, and heartbeat noise"
+        },
+        "logreducer.foldStackTraces": {
+          "type": "boolean",
+          "default": true,
+          "description": "Collapse internal framework stack frames"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "tsc -p ./ && node out/test/runFixtures.js",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "@types/glob": "^8.1.0",
+    "typescript": "^5.3.0",
+    "@vscode/test-electron": "^2.3.0",
+    "glob": "^10.3.0"
+  }
+}

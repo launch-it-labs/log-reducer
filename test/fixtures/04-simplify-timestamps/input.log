@@ -1,0 +1,7 @@
+2024-01-15T14:32:01.123456Z INFO: Application started
+2024-01-15T14:32:02.789012+00:00 INFO: Config loaded
+2024-01-15 14:32:03,456 WARN: Slow query detected
+2024-01-15 14:32:04.789012 ERROR: Connection timeout
+Jan 15 14:32:05 myhost syslog: Service restarted
+Received callback at 1705312326000 from external service
+2024-01-15T14:32:07.000Z INFO: Request completed

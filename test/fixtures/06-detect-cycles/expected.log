@@ -1,0 +1,6 @@
+INFO: Starting sync cycle
+INFO: Fetching data from upstream
+INFO: Processing 50 records
+INFO: Sync complete
+[... above 4-line block repeated 4 more times ...]
+ERROR: Upstream server returned 500

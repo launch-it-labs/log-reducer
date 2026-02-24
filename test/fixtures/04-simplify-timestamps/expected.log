@@ -1,0 +1,7 @@
+14:32:01 INFO: Application started
+14:32:02 INFO: Config loaded
+14:32:03 WARN: Slow query detected
+14:32:04 ERROR: Connection timeout
+14:32:05 myhost syslog: Service restarted
+Received callback at <epoch> from external service
+14:32:07 INFO: Request completed

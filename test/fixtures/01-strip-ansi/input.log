@@ -1,0 +1,8 @@
+[32m2024-01-15 INFO[0m Application started successfully
+[31mERROR[0m: Failed to connect to database
+[1m[33mWARN[0m[0m: Retrying connection...
+[36m[2024-01-15 14:32:01][0m Processing request
+Normal line without any ANSI codes
+[4mUnderlined text[24m in log output
+Progress: [K[1A[K50% complete
+Loading [?25l...[?25h done

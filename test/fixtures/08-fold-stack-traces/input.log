@@ -1,0 +1,13 @@
+ERROR: NullPointerException: Cannot invoke method on null object
+    at com.myapp.service.UserService.getUser(UserService.java:45)
+    at com.myapp.controller.UserController.handleRequest(UserController.java:78)
+    at com.myapp.controller.UserController.doGet(UserController.java:32)
+    at javax.servlet.http.HttpServlet.service(HttpServlet.java:750)
+    at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:227)
+    at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:162)
+    at org.springframework.web.filter.OncePerRequestFilter.doFilterInternal(OncePerRequestFilter.java:100)
+    at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
+    at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:177)
+    at com.myapp.Application.main(Application.java:12)
+    at java.lang.reflect.Method.invoke(Method.java:498)
+INFO: Recovery initiated

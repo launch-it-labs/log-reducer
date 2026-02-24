@@ -1,0 +1,19 @@
+INFO: Application starting
+DEBUG: Loading module auth
+DEBUG: Loading module database
+DEBUG: Loading module cache
+INFO: All modules loaded
+DEBUG: Checking connection pool
+GET /healthz 200 OK 1ms
+GET /healthz 200 OK 1ms
+INFO: Processing user request
+DEBUG: Validating input
+TRACE: Raw input bytes: [72, 65, 6c, 6c, 6f]
+INFO: Request processed successfully
+heartbeat received from node-1
+heartbeat received from node-2
+INFO: Emitting metrics for request_count
+DEBUG: Cache hit for key user:123
+INFO: User logged in
+DEBUG: Session created
+WARN: Slow query detected (2.5s)

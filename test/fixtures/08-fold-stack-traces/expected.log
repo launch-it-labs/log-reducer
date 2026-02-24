@@ -1,0 +1,8 @@
+ERROR: NullPointerException: Cannot invoke method on null object
+    at com.myapp.service.UserService.getUser(UserService.java:45)
+    at com.myapp.controller.UserController.handleRequest(UserController.java:78)
+    at com.myapp.controller.UserController.doGet(UserController.java:32)
+    [... 6 framework frames (javax, apache, spring) omitted ...]
+    at com.myapp.Application.main(Application.java:12)
+    [... 1 framework frames (java) omitted ...]
+INFO: Recovery initiated

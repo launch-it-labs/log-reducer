@@ -1,0 +1,8 @@
+2024-01-15 INFO Application started successfully
+ERROR: Failed to connect to database
+WARN: Retrying connection...
+[2024-01-15 14:32:01] Processing request
+Normal line without any ANSI codes
+Underlined text in log output
+Progress: 50% complete
+Loading ... done
