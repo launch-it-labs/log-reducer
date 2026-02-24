@@ -14,6 +14,9 @@
     "onCommand:logreducer.reduceClipboard"
   ],
   "main": "./out/src/extension.js",
+  "bin": {
+    "logreducer": "./out/src/cli.js"
+  },
   "contributes": {
     "commands": [
       {
@@ -92,8 +95,13 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "tsc -p ./ && node out/test/runFixtures.js",
-    "lint": "eslint src --ext ts"
+    "test": "tsc -p ./ && node out/test/runFixtures.js && node out/test/testMcpServer.js",
+    "lint": "eslint src --ext ts",
+    "mcp": "node out/src/mcp-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",

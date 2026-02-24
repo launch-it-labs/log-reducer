@@ -4,5 +4,6 @@ node_modules/
 .vscode-test/
 test/fixtures/**/actual.log
 package-lock.json
-.claude/
+.claude/settings.local.json
+.claude/todos/
 nul

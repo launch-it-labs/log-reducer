@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "logreducer": {
+      "command": "node",
+      "args": ["out/src/mcp-server.js"]
+    }
+  }
+}

@@ -193,15 +193,17 @@ You can also open it from the command palette: `Ctrl+Shift+P` -> **"Reduce Log i
 
 ## What It Does
 
-Log Reducer runs 9 transforms in sequence. Each can be toggled on/off in VS Code settings under `logreducer.*`.
+Log Reducer runs 11 transforms in sequence. Each can be toggled on/off in VS Code settings under `logreducer.*`.
 
 | Transform | What it removes | Example |
 |-----------|----------------|---------|
 | **Strip ANSI** | Color codes, control characters | `\x1b[31mERROR\x1b[0m` -> `ERROR` |
 | **Normalize Whitespace** | Trailing spaces, excessive blank lines | 5 blank lines -> 1 |
-| **Shorten IDs** | UUIDs, hex hashes, JWTs, long tokens | `af8c3d2e-1a2b-...` -> `$1` |
+| **Shorten IDs** | UUIDs, hex strings (7+), JWTs, long tokens, underscore IDs | `af8c3d2e-1a2b-...` -> `$1` |
+| **Shorten URLs** | Query parameters, long URL paths | `https://host/a/b/c/d/e?key=val` -> `https://host/.../d/e` |
 | **Simplify Timestamps** | Date portions of timestamps | `2024-01-15T14:32:01.123Z` -> `14:32:01` |
-| **Filter Noise** | DEBUG/TRACE, health checks, heartbeats | Collapsed to `[... N lines omitted ...]` |
+| **Filter Noise** | DEBUG/TRACE, health checks, heartbeats, devtools artifacts | Collapsed to `[... N lines omitted ...]` |
+| **Strip Source Locations** | Browser console `file.js:line` prefixes | `useHook.js:59 [Tag] msg` -> `[Tag] msg` |
 | **Compress Prefix** | Repeated log prefixes, separator lines | 8 lines with same prefix -> 1 header + indented suffixes |
 | **Deduplicate Lines** | Consecutive similar lines | 6 request lines -> `[x6] template \| N = 1,2,3,4,5,6` |
 | **Detect Cycles** | Repeating multi-line blocks | 5 identical 3-line blocks -> 1 block + `[... repeated 4 more times ...]` |
@@ -270,13 +272,36 @@ All settings under `logreducer.*` in VS Code settings. Every transform defaults 
 |---------|-------------|
 | `logreducer.stripAnsi` | Remove ANSI color codes and control characters |
 | `logreducer.normalizeWhitespace` | Collapse excessive blank lines, trim trailing spaces |
-| `logreducer.shortenIds` | Replace UUIDs, hex strings, tokens with `$1`, `$2`... |
+| `logreducer.shortenIds` | Replace UUIDs, hex strings (7+), JWTs, tokens, underscore IDs with `$1`, `$2`... |
+| `logreducer.shortenUrls` | Strip query parameters and collapse long URL paths |
 | `logreducer.simplifyTimestamps` | Shorten verbose timestamp formats |
+| `logreducer.filterNoise` | Remove DEBUG, health checks, heartbeats, devtools artifacts |
+| `logreducer.stripSourceLocations` | Strip browser console `file.js:line` prefixes when a `[Tag]` follows |
+| `logreducer.compressPrefix` | Factor out repeated log prefixes, strip separator lines |
 | `logreducer.deduplicateLines` | Collapse consecutive identical/similar lines |
 | `logreducer.detectCycles` | Find repeating multi-line blocks, show once + count |
-| `logreducer.filterNoise` | Remove DEBUG, health checks, heartbeats |
-| `logreducer.compressPrefix` | Factor out repeated log prefixes, strip separator lines |
 | `logreducer.foldStackTraces` | Collapse framework stack frames, shorten paths |
+
+## CLI Usage
+
+Log Reducer also ships as a CLI tool that reads from stdin and writes to stdout. This works with any tool or script that can pipe text:
+
+```bash
+# Reduce a log file
+node out/src/cli.js < app.log > reduced.log
+
+# Pipe from another command
+kubectl logs my-pod | node out/src/cli.js
+
+# After npm link or global install
+cat app.log | logreducer
+```
+
+## AI Agent Integration
+
+Log Reducer includes an MCP server and portable instruction files so AI agents (Claude Code, Codex, Copilot) can reduce logs automatically. Clone the repo, build, and the integrations work out of the box.
+
+See [docs/agent-integration.md](docs/agent-integration.md) for full setup details, MCP server configuration, and cross-agent support.
 
 ## Contributing
 
@@ -289,7 +314,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test, and add new trans
 - **Clipboard workflow**: Copy -> shortcut -> review -> paste. No file picker or selection mode.
 - **Transform order matters**: IDs and timestamps are shortened before dedup so lines differing only by ID/time become identical. Noise is filtered before prefix compression so separator lines don't break grouping.
 - **Rule-based, no AI**: Zero API calls, works offline, deterministic output, no API keys needed.
-- **Zero runtime dependencies**: Pure TypeScript, nothing beyond the VS Code API.
+- **Minimal dependencies**: The VS Code extension itself is pure TypeScript with no runtime dependencies. The MCP server adds `@modelcontextprotocol/sdk` for Claude Code integration.
 
 ## License
 
