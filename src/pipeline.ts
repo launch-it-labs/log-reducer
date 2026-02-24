@@ -1,4 +1,4 @@
-import { Transform, PipelineOptions, DEFAULT_OPTIONS } from './types';
+import { Transform, PipelineOptions } from './types';
 import {
   stripAnsi,
   normalizeWhitespace,
@@ -28,12 +28,16 @@ const ALL_TRANSFORMS: Transform[] = [
   foldStackTraces,
 ];
 
+/** All transforms enabled by default — derived from ALL_TRANSFORMS. */
+const DEFAULT_OPTIONS: PipelineOptions = Object.fromEntries(
+  ALL_TRANSFORMS.map(t => [t.settingKey, true])
+);
+
 export function minify(input: string, options: PipelineOptions = DEFAULT_OPTIONS): string {
   let result = input;
 
   for (const transform of ALL_TRANSFORMS) {
-    const key = transform.settingKey as keyof PipelineOptions;
-    if (options[key]) {
+    if (options[transform.settingKey]) {
       result = transform.apply(result);
     }
   }
@@ -41,4 +45,4 @@ export function minify(input: string, options: PipelineOptions = DEFAULT_OPTIONS
   return result;
 }
 
-export { ALL_TRANSFORMS };
+export { ALL_TRANSFORMS, DEFAULT_OPTIONS };

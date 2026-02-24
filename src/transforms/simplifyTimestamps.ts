@@ -1,4 +1,5 @@
 import { Transform } from '../types';
+import { EPOCH_PLACEHOLDER } from '../skeleton';
 
 // ISO 8601 timestamps: 2024-01-15T14:32:01.123456Z, with optional timezone/fractional
 const ISO_TIMESTAMP_REGEX = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:?\d{2})?/g;
@@ -12,20 +13,8 @@ const EPOCH_MS_REGEX = /\b1[5-9]\d{11}\b/g;
 // Syslog-style: Jan 15 14:32:01
 const SYSLOG_TIMESTAMP_REGEX = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}/g;
 
-function simplifyIso(match: string): string {
-  // 2024-01-15T14:32:01.123456Z → 14:32:01
-  const timeMatch = match.match(/(\d{2}:\d{2}:\d{2})/);
-  return timeMatch ? timeMatch[1] : match;
-}
-
-function simplifyLogTimestamp(match: string): string {
-  // 2024-01-15 14:32:01,123456 → 14:32:01
-  const timeMatch = match.match(/(\d{2}:\d{2}:\d{2})/);
-  return timeMatch ? timeMatch[1] : match;
-}
-
-function simplifySyslog(match: string): string {
-  // Jan 15 14:32:01 → 14:32:01
+// Extract HH:MM:SS from any timestamp format
+function extractTime(match: string): string {
   const timeMatch = match.match(/(\d{2}:\d{2}:\d{2})/);
   return timeMatch ? timeMatch[1] : match;
 }
@@ -35,10 +24,10 @@ export const simplifyTimestamps: Transform = {
   settingKey: 'simplifyTimestamps',
   apply(input: string): string {
     let result = input;
-    result = result.replace(ISO_TIMESTAMP_REGEX, simplifyIso);
-    result = result.replace(LOG_TIMESTAMP_REGEX, simplifyLogTimestamp);
-    result = result.replace(EPOCH_MS_REGEX, '<epoch>');
-    result = result.replace(SYSLOG_TIMESTAMP_REGEX, simplifySyslog);
+    result = result.replace(ISO_TIMESTAMP_REGEX, extractTime);
+    result = result.replace(LOG_TIMESTAMP_REGEX, extractTime);
+    result = result.replace(EPOCH_MS_REGEX, EPOCH_PLACEHOLDER);
+    result = result.replace(SYSLOG_TIMESTAMP_REGEX, extractTime);
     return result;
   },
 };

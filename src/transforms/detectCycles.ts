@@ -1,4 +1,5 @@
 import { Transform } from '../types';
+import { skeleton } from '../skeleton';
 
 /**
  * Detect repeating multi-line blocks (cycles).
@@ -7,15 +8,6 @@ import { Transform } from '../types';
  * the next N lines repeat the previous N lines. When a cycle is found,
  * count how many times it repeats and collapse.
  */
-
-function skeleton(line: string): string {
-  return line
-    .replace(/\$\d+/g, '<ID>')
-    .replace(/\b\d+\b/g, '<N>')
-    .replace(/\d{2}:\d{2}:\d{2}/g, '<T>')
-    .replace(/<epoch>/g, '<T>')
-    .trim();
-}
 
 function linesMatch(a: string[], b: string[], startA: number, startB: number, length: number): boolean {
   for (let i = 0; i < length; i++) {

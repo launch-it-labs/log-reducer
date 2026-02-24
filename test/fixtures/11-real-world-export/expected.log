@@ -69,14 +69,7 @@ app.ai_upscaler.video_encoder - INFO:
 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Cleared GPU cache after clip 0
 20:13:45 - app.services.clip_cache - INFO - [ClipCache] Cache HIT: $2
 20:13:45 - app.services.clip_pipeline - INFO - [Pipeline] Clip 1: Cache HIT
-20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Clip 1 processed: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\processed_1.mp4
-20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Cleared GPU cache after clip 1
-20:13:45 - app.services.clip_cache - INFO - [ClipCache] Cache HIT: $3
-20:13:45 - app.services.clip_pipeline - INFO - [Pipeline] Clip 2: Cache HIT
-20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Clip 2 processed: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\processed_2.mp4
-20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Cleared GPU cache after clip 2
-20:13:45 - app.services.clip_cache - INFO - [ClipCache] Cache HIT: $4
-20:13:45 - app.services.clip_pipeline - INFO - [Pipeline] Clip 3: Cache HIT
+[... above 4-line block repeated 2 more times ...]
 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Clip 3 processed: C:\Users\imank\AppData\Local\Temp\tmpb20sk12q\processed_3.mp4
 20:13:45 - app.routers.export.multi_clip - INFO - [Multi-Clip Export] Cleared GPU cache after clip 3
 20:13:46 - app.services.transitions.cut - INFO - [CutTransition] Concatenating 4 clips

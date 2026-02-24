@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { minify } from './pipeline';
+import { minify, ALL_TRANSFORMS } from './pipeline';
 import { PipelineOptions } from './types';
 
 function countTokens(text: string): number {
@@ -23,19 +23,12 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      // Read settings
+      // Read settings — derive keys from ALL_TRANSFORMS so adding a
+      // new transform automatically picks up its setting.
       const config = vscode.workspace.getConfiguration('logreducer');
-      const options: PipelineOptions = {
-        stripAnsi: config.get('stripAnsi', true),
-        normalizeWhitespace: config.get('normalizeWhitespace', true),
-        shortenIds: config.get('shortenIds', true),
-        simplifyTimestamps: config.get('simplifyTimestamps', true),
-        deduplicateLines: config.get('deduplicateLines', true),
-        detectCycles: config.get('detectCycles', true),
-        filterNoise: config.get('filterNoise', true),
-        foldStackTraces: config.get('foldStackTraces', true),
-        compressPrefix: config.get('compressPrefix', true),
-      };
+      const options: PipelineOptions = Object.fromEntries(
+        ALL_TRANSFORMS.map(t => [t.settingKey, config.get(t.settingKey, true)])
+      );
 
       // Run the minification pipeline
       const result = minify(clipboardText, options);

@@ -1,4 +1,5 @@
 import { Transform } from '../types';
+import { skeleton } from '../skeleton';
 
 /**
  * Collapse consecutive identical or near-identical lines.
@@ -10,16 +11,6 @@ import { Transform } from '../types';
  * When lines differ in specific values, the output shows a template with
  * {N} placeholders and lists the varying values inline.
  */
-
-// Collapse numbers, $-placeholders, and short hex to create a "skeleton"
-function skeleton(line: string): string {
-  return line
-    .replace(/\$\d+/g, '<ID>')        // Already-shortened IDs
-    .replace(/\d+/g, '<N>')            // Numbers (no \b — matches 2574MB, v2, etc.)
-    .replace(/\d{2}:\d{2}:\d{2}/g, '<T>')  // Times (HH:MM:SS)
-    .replace(/<epoch>/g, '<T>')        // Epoch placeholders from timestamp transform
-    .trim();
-}
 
 // Pattern matching the same tokens that skeleton() replaces
 const TOKEN_PATTERN = /\$\d+|\d+/g;

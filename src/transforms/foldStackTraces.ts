@@ -37,64 +37,40 @@ const FRAME_PATTERNS = [
   /^\t*\S+:\d+/,                            // Go alternative
 ];
 
-// Framework/internal packages to collapse
-const FRAMEWORK_PATTERNS = [
+// Framework/internal packages to collapse.
+// Each entry has a pattern to match and an optional human-readable name for summaries.
+const FRAMEWORKS: { pattern: RegExp; name: string | null }[] = [
   // Java
-  /java\.(lang|util|io|net|security)\./,
-  /javax\./,
-  /sun\./,
-  /org\.springframework\./,
-  /org\.apache\./,
-  /com\.sun\./,
+  { pattern: /java\.(lang|util|io|net|security)\./, name: 'java' },
+  { pattern: /javax\./, name: 'javax' },
+  { pattern: /sun\./, name: 'java' },
+  { pattern: /com\.sun\./, name: 'java' },
+  { pattern: /org\.springframework\./, name: 'spring' },
+  { pattern: /org\.apache\./, name: 'apache' },
   // Node.js
-  /node_modules\//,
-  /\(internal\//,
-  /\(node:/,
-  /at Module\./,
-  /at Object\.Module/,
-  /at Function\.Module/,
+  { pattern: /node_modules\//, name: 'node_modules' },
+  { pattern: /\(internal\//, name: 'node' },
+  { pattern: /\(node:/, name: 'node' },
+  { pattern: /at Module\./, name: 'node' },
+  { pattern: /at Object\.Module/, name: null },
+  { pattern: /at Function\.Module/, name: null },
   // Python
-  /importlib\._bootstrap/,
-  /importlib\._bootstrap_external/,
-  /threading\.py/,
-  /concurrent\/futures/,
-  /asyncio\//,
-  /anyio\//,
-  /uvicorn\//,
-  /starlette\//,
-  /fastapi\//,
-  /werkzeug\//,
-  /django\/core\//,
-  /flask\/app\.py/,
-  /contextlib\.py/,
+  { pattern: /importlib\._bootstrap/, name: null },
+  { pattern: /importlib\._bootstrap_external/, name: null },
+  { pattern: /threading\.py/, name: null },
+  { pattern: /concurrent\/futures/, name: null },
+  { pattern: /asyncio\//, name: 'asyncio' },
+  { pattern: /anyio\//, name: 'anyio' },
+  { pattern: /uvicorn\//, name: 'uvicorn' },
+  { pattern: /starlette\//, name: 'starlette' },
+  { pattern: /fastapi\//, name: 'fastapi' },
+  { pattern: /werkzeug\//, name: 'werkzeug' },
+  { pattern: /django\/core\//, name: 'django' },
+  { pattern: /flask\/app\.py/, name: 'flask' },
+  { pattern: /contextlib\.py/, name: 'contextlib' },
   // Go
-  /net\/http/,
-  /runtime\//,
-];
-
-// Map framework patterns to human-readable names for the summary
-const FRAMEWORK_NAMES: [RegExp, string][] = [
-  [/uvicorn\//, 'uvicorn'],
-  [/starlette\//, 'starlette'],
-  [/fastapi\//, 'fastapi'],
-  [/werkzeug\//, 'werkzeug'],
-  [/django\//, 'django'],
-  [/flask\//, 'flask'],
-  [/asyncio\//, 'asyncio'],
-  [/anyio\//, 'anyio'],
-  [/contextlib\.py/, 'contextlib'],
-  [/javax\./, 'javax'],
-  [/org\.springframework\./, 'spring'],
-  [/org\.apache\./, 'apache'],
-  [/java\.(lang|util|io|net)\./, 'java'],
-  [/sun\./, 'java'],
-  [/com\.sun\./, 'java'],
-  [/node_modules\//, 'node_modules'],
-  [/\(internal\//, 'node'],
-  [/\(node:/, 'node'],
-  [/at Module\./, 'node'],
-  [/net\/http/, 'net/http'],
-  [/runtime\//, 'runtime'],
+  { pattern: /net\/http/, name: 'net/http' },
+  { pattern: /runtime\//, name: 'runtime' },
 ];
 
 function isFrameLine(line: string): boolean {
@@ -103,7 +79,7 @@ function isFrameLine(line: string): boolean {
 }
 
 function isFrameworkFrame(line: string): boolean {
-  return FRAMEWORK_PATTERNS.some((p) => p.test(line));
+  return FRAMEWORKS.some((f) => f.pattern.test(line));
 }
 
 function isCaretLine(line: string): boolean {
@@ -112,8 +88,8 @@ function isCaretLine(line: string): boolean {
 }
 
 function getFrameworkName(line: string): string | null {
-  for (const [pattern, name] of FRAMEWORK_NAMES) {
-    if (pattern.test(line)) return name;
+  for (const f of FRAMEWORKS) {
+    if (f.pattern.test(line)) return f.name;
   }
   return null;
 }
