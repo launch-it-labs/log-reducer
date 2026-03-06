@@ -1,6 +1,6 @@
 # Log Reducer
 
-A VS Code extension that reduces log files for AI consumption. Copy a noisy log, hit a shortcut, and get back a clean version that preserves the signal while cutting the token count — typically by 70-90%.
+An MCP tool and CLI that reduces log files for AI consumption. Pass a file path, get back a clean version that preserves the signal while cutting the token count — typically by 70-90%. Raw logs never enter the AI's context.
 
 ## Before & After
 
@@ -27,113 +27,15 @@ A VS Code extension that reduces log files for AI consumption. Copy a noisy log,
 2025-07-10T09:14:03.200445Z INFO [app.server] Application startup complete
 INFO:     127.0.0.1:52340 - "GET /healthz HTTP/1.1" 200 OK
 INFO:     127.0.0.1:52341 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52342 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52343 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52344 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52345 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52346 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52347 - "GET /healthz HTTP/1.1" 200 OK
-2025-07-10T09:14:12.003881Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:17.003881Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:22.003881Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:27.003881Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:32.003881Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:37.003881Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:42.003881Z DEBUG [app.db] heartbeat check: connection pool healthy
-INFO:     connection open
-INFO:     connection closed
-INFO:     connection open
-INFO:     connection closed
-INFO:     connection open
-INFO:     connection closed
-2025-07-10 09:14:30 - app.orders - INFO - ================================================================
+...8 more health checks...
 2025-07-10 09:14:30 - app.orders - INFO - Processing batch: 8 orders
-2025-07-10 09:14:30 - app.orders - INFO - ================================================================
 2025-07-10 09:14:30 - app.orders - INFO - Order f8c3d2e1-b4a5-4f6e-8d9c-1a2b3c4d5e6f: validating
-2025-07-10 09:14:30 - app.orders - INFO - Order f8c3d2e1-b4a5-4f6e-8d9c-1a2b3c4d5e6f: payment confirmed
-2025-07-10 09:14:30 - app.orders - INFO - Order f8c3d2e1-b4a5-4f6e-8d9c-1a2b3c4d5e6f: shipped
-2025-07-10 09:14:30 - app.orders - INFO - Order b7e4f2a9-c8d1-4b3e-a5f6-7890abcdef12: validating
-2025-07-10 09:14:30 - app.orders - INFO - Order b7e4f2a9-c8d1-4b3e-a5f6-7890abcdef12: payment confirmed
-2025-07-10 09:14:30 - app.orders - INFO - Order b7e4f2a9-c8d1-4b3e-a5f6-7890abcdef12: shipped
-2025-07-10 09:14:30 - app.orders - INFO - Order c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f: validating
-2025-07-10 09:14:30 - app.orders - INFO - Order c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f: payment confirmed
-2025-07-10 09:14:30 - app.orders - INFO - Order c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f: shipped
-2025-07-10 09:14:30 - app.orders - INFO - Order d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a: validating
-2025-07-10 09:14:30 - app.orders - INFO - Order d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a: payment confirmed
-2025-07-10 09:14:30 - app.orders - INFO - Order d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a: shipped
-2025-07-10 09:14:30 - app.orders - INFO - Order e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b: validating
-2025-07-10 09:14:30 - app.orders - INFO - Order e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b: payment confirmed
-2025-07-10 09:14:30 - app.orders - INFO - Order e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b: shipped
-2025-07-10 09:14:30 - app.orders - INFO - ================================================================
-2025-07-10 09:14:30 - app.orders - INFO - Batch complete: 5/8 orders processed, 3 pending payment
-2025-07-10 09:14:30 - app.orders - INFO - ================================================================
-INFO:     127.0.0.1:52401 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52402 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52403 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52404 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52405 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52406 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52407 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52408 - "GET /healthz HTTP/1.1" 200 OK
-2025-07-10T09:14:35.003112Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:40.003112Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:45.003112Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:50.003112Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:55.003112Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10 09:14:35 - app.webhooks - INFO - Dispatching webhook for event order.shipped to https://partner-api.example.com/hooks/9f8e7d6c5b4a3210
-2025-07-10 09:14:35 - app.webhooks - INFO - Dispatching webhook for event order.shipped to https://partner-api.example.com/hooks/9f8e7d6c5b4a3210
-2025-07-10 09:14:35 - app.webhooks - INFO - Dispatching webhook for event order.shipped to https://partner-api.example.com/hooks/9f8e7d6c5b4a3210
-2025-07-10 09:14:35 - app.webhooks - INFO - Dispatching webhook for event order.shipped to https://partner-api.example.com/hooks/9f8e7d6c5b4a3210
-2025-07-10 09:14:35 - app.webhooks - INFO - Dispatching webhook for event order.shipped to https://partner-api.example.com/hooks/9f8e7d6c5b4a3210
-INFO:     127.0.0.1:52410 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52411 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52412 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52413 - "GET /healthz HTTP/1.1" 200 OK
-2025-07-10T09:14:42.003124Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:47.003441Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10 09:14:44 - app.payments - INFO - Processing refund for order f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
-2025-07-10 09:14:44 - app.payments - INFO - Refund initiated: $127.50 to card ending 4242
+...many more order lines, webhooks, heartbeats, health checks...
 2025-07-10 09:14:45 - app.payments - ERROR - Refund failed for order f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c: insufficient funds in merchant account
 Traceback (most recent call last):
-  File "/home/deploy/app/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 426, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/deploy/app/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/deploy/app/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1135, in __call__
-    await super().__call__(scope, receive, send)
-  File "/home/deploy/app/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/home/deploy/app/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/home/deploy/app/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  ...19 more framework frames...
-  File "/home/deploy/app/src/routers/payments.py", line 89, in process_refund
-    result = await stripe_client.refund(amount=order.total, charge_id=order.charge_id)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/deploy/app/src/services/stripe.py", line 234, in refund
-    raise PaymentError(f"Refund failed: {response.error.message}")
+  ...80 lines of stack trace...
 PaymentError: Refund failed: insufficient funds in merchant account
-INFO:     127.0.0.1:52420 - "POST /api/orders/f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c/refund HTTP/1.1" 500 Internal Server Error
-INFO:     127.0.0.1:52421 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52422 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52423 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52424 - "GET /healthz HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52425 - "GET /healthz HTTP/1.1" 200 OK
-2025-07-10T09:14:47.003441Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:52.003991Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10T09:14:57.003112Z DEBUG [app.db] heartbeat check: connection pool healthy
-2025-07-10 09:14:50 - app.metrics - INFO - ================================================================
-2025-07-10 09:14:50 - app.metrics - INFO - requests_total: 847
-2025-07-10 09:14:50 - app.metrics - INFO - requests_failed: 12
-2025-07-10 09:14:50 - app.metrics - INFO - avg_response_ms: 142
-2025-07-10 09:14:50 - app.metrics - INFO - active_connections: 23
-2025-07-10 09:14:50 - app.metrics - INFO - cache_hit_rate: 0.94
-2025-07-10 09:14:50 - app.metrics - INFO - uptime_seconds: 86400
-2025-07-10 09:14:50 - app.metrics - INFO - ================================================================
-...50 more lines of health checks, heartbeats, and connection noise...
+...50 more lines of noise...
 ```
 
 **Output** (40 lines, 193 tokens — 87% reduction):
@@ -184,16 +86,62 @@ Every error, warning, and meaningful event is preserved. The noise — ANSI code
 
 ## Usage
 
-1. Copy a log to your clipboard
-2. Press `Ctrl+Alt+R` (`Cmd+Alt+R` on Mac)
-3. Two tabs open side-by-side: original on the left, compressed on the right
-4. The compressed output is also written back to your clipboard, ready to paste into an AI chat
+### MCP tool (recommended for AI workflows)
 
-You can also open it from the command palette: `Ctrl+Shift+P` -> **"Reduce Log in Clipboard"**
+The MCP server exposes a `reduce_log` tool that AI agents call with a file path. The agent never sees the raw log — only the compressed output enters the conversation.
+
+```bash
+npm install
+npm run compile
+```
+
+The AI calls:
+```
+reduce_log({ file: "/path/to/app.log", tail: 200, level: "error" })
+```
+
+### CLI (for scripts and piping)
+
+```bash
+# Reduce a log file
+node out/src/cli.js < app.log > reduced.log
+
+# Pipe from another command
+kubectl logs my-pod | node out/src/cli.js
+
+# Filter to errors with context
+node out/src/cli.js --level error --context 10 < app.log
+
+# After npm link or global install
+cat app.log | logreducer
+```
+
+## Integrate with Your Project
+
+Add Log Reducer to any project so the AI automatically compresses logs instead of reading them raw.
+
+**Step 1** — Register the MCP server in your project's `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "logreducer": {
+      "command": "node",
+      "args": ["/absolute/path/to/log-reducer/out/src/mcp-server.js"]
+    }
+  }
+}
+```
+
+**Step 2** — Add instructions to your project's `.claude/CLAUDE.md` telling the AI to use `reduce_log` instead of reading raw log files.
+
+**Step 3** — (Optional) Copy `.claude/commands/logdump.md` into your project for a `/logdump` slash command that dumps clipboard contents to a file and compresses automatically.
+
+See [docs/agent-integration.md](docs/agent-integration.md) for the full integration guide, including CLAUDE.md instructions to copy, filter parameters, and setup for other AI agents (Codex, Copilot).
 
 ## What It Does
 
-Log Reducer runs 11 transforms in sequence. Each can be toggled on/off in VS Code settings under `logreducer.*`.
+Log Reducer runs transforms in sequence, each reducing a different type of noise:
 
 | Transform | What it removes | Example |
 |-----------|----------------|---------|
@@ -217,8 +165,6 @@ When 3+ consecutive lines share the same `timestamp - module - LEVEL -` prefix, 
 20:11:07 - app.video_encoder - INFO - Total input frames: 450
 20:11:07 - app.video_encoder - INFO - input_frame_count (PNG files): 450
 20:11:07 - app.video_encoder - INFO - original_fps (from source): 29.97
-20:11:07 - app.video_encoder - INFO - target_fps (requested): 30
-20:11:07 - app.video_encoder - INFO - expected input duration: 15.015000s
 ```
 becomes:
 ```
@@ -226,11 +172,7 @@ becomes:
   Total input frames: 450
   input_frame_count (PNG files): 450
   original_fps (from source): 29.97
-  target_fps (requested): 30
-  expected input duration: 15.015000s
 ```
-
-Decorative separator lines (`====`, `----`, `****`) are also silently stripped since they carry no semantic information.
 
 ### Fold Stack Traces in detail
 
@@ -253,55 +195,12 @@ When consecutive lines share the same structure but differ in specific values, i
 
 ## Installation
 
-Not yet published to the VS Code Marketplace. To install from source:
-
 ```bash
 git clone https://github.com/imankha/log-reducer.git
 cd log-reducer
 npm install
 npm run compile
 ```
-
-Then open the folder in VS Code and press F5 to launch an Extension Development Host with the extension loaded.
-
-## Configuration
-
-All settings under `logreducer.*` in VS Code settings. Every transform defaults to `true`:
-
-| Setting | Description |
-|---------|-------------|
-| `logreducer.stripAnsi` | Remove ANSI color codes and control characters |
-| `logreducer.normalizeWhitespace` | Collapse excessive blank lines, trim trailing spaces |
-| `logreducer.shortenIds` | Replace UUIDs, hex strings (7+), JWTs, tokens, underscore IDs with `$1`, `$2`... |
-| `logreducer.shortenUrls` | Strip query parameters and collapse long URL paths |
-| `logreducer.simplifyTimestamps` | Shorten verbose timestamp formats |
-| `logreducer.filterNoise` | Remove DEBUG, health checks, heartbeats, devtools artifacts |
-| `logreducer.stripSourceLocations` | Strip browser console `file.js:line` prefixes when a `[Tag]` follows |
-| `logreducer.compressPrefix` | Factor out repeated log prefixes, strip separator lines |
-| `logreducer.deduplicateLines` | Collapse consecutive identical/similar lines |
-| `logreducer.detectCycles` | Find repeating multi-line blocks, show once + count |
-| `logreducer.foldStackTraces` | Collapse framework stack frames, shorten paths |
-
-## CLI Usage
-
-Log Reducer also ships as a CLI tool that reads from stdin and writes to stdout. This works with any tool or script that can pipe text:
-
-```bash
-# Reduce a log file
-node out/src/cli.js < app.log > reduced.log
-
-# Pipe from another command
-kubectl logs my-pod | node out/src/cli.js
-
-# After npm link or global install
-cat app.log | logreducer
-```
-
-## AI Agent Integration
-
-Log Reducer includes an MCP server and portable instruction files so AI agents (Claude Code, Codex, Copilot) can reduce logs automatically. Clone the repo, build, and the integrations work out of the box.
-
-See [docs/agent-integration.md](docs/agent-integration.md) for full setup details, MCP server configuration, and cross-agent support.
 
 ## Contributing
 
@@ -311,10 +210,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test, and add new trans
 
 - **Token reduction over line reduction**: Stats are reported in tokens (whitespace-split), not lines, since that's what matters for AI context windows.
 - **No ID legend**: Replaced IDs get `$1`, `$2` placeholders with no mapping. The original IDs are almost never relevant when debugging with an AI.
-- **Clipboard workflow**: Copy -> shortcut -> review -> paste. No file picker or selection mode.
+- **File-path workflow**: The MCP tool accepts file paths so raw logs never enter the AI's context. Only compressed output crosses into the conversation.
 - **Transform order matters**: IDs and timestamps are shortened before dedup so lines differing only by ID/time become identical. Noise is filtered before prefix compression so separator lines don't break grouping.
 - **Rule-based, no AI**: Zero API calls, works offline, deterministic output, no API keys needed.
-- **Minimal dependencies**: The VS Code extension itself is pure TypeScript with no runtime dependencies. The MCP server adds `@modelcontextprotocol/sdk` for Claude Code integration.
+- **Minimal dependencies**: Pure TypeScript with `@modelcontextprotocol/sdk` as the only runtime dependency.
 
 ## License
 
