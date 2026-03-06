@@ -7,5 +7,4 @@ INFO: Processing user request
 INFO: Request processed successfully
 [... 4 lines omitted ...]
 INFO: User logged in
-[... 1 lines omitted ...]
 WARN: Slow query detected (2.5s)

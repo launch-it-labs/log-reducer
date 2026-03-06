@@ -1,0 +1,7 @@
+ => => exporting layers                                                    479.4s
+ => => exporting manifest sha256:0a22c036758a                              0.0s
+ => => exporting config sha256:82bf24244b28                                0.0s
+ => => pushing layers for registry.fly.io/myapp:deploy-abc123@sha256     102.3s
+ => => pushing 10 layers  0.1s-102.3s
+ => => pushing manifest for registry.fly.io/myapp:deploy-abc123@sha256     0.1s
+--> Build Summary:

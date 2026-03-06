@@ -1,0 +1,23 @@
+ => ERROR [5/6] RUN pip install --no-cache-dir -r requirements.txt                                                13.2s
+ > [5/6] RUN pip install --no-cache-dir -r requirements.txt:
+2.275 Collecting fastapi==0.108.0 (from -r requirements.txt (line 5))
+2.327   Downloading fastapi-0.108.0-py3-none-any.whl.metadata (24 kB)
+2.385 Collecting uvicorn==0.25.0 (from -r requirements.txt (line 6))
+2.389   Downloading uvicorn-0.25.0-py3-none-any.whl.metadata (6.4 kB)
+2.454 Collecting starlette==0.32.0.post1 (from -r requirements.txt (line 7))
+2.459   Downloading starlette-0.32.0.post1-py3-none-any.whl.metadata (5.8 kB)
+2.670 Collecting pydantic==2.5.0 (from -r requirements.txt (line 8))
+2.677   Downloading pydantic-2.5.0-py3-none-any.whl.metadata (174 kB)
+3.887 Collecting boto3==1.35.0 (from -r requirements.txt (line 18))
+3.895   Downloading boto3-1.35.0-py3-none-any.whl.metadata (6.6 kB)
+9.825 Collecting aiohappyeyeballs>=2.5.0 (from aiohttp==3.13.2->-r requirements.txt (line 13))
+9.829   Downloading aiohappyeyeballs-2.6.1-py3-none-any.whl.metadata (5.9 kB)
+9.851 Collecting aiosignal>=1.4.0 (from aiohttp==3.13.2->-r requirements.txt (line 13))
+9.855   Downloading aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+9.889 Collecting attrs>=17.3.0 (from aiohttp==3.13.2->-r requirements.txt (line 13))
+9.893   Downloading attrs-25.4.0-py3-none-any.whl.metadata (10 kB)
+11.30 ERROR: Cannot install -r requirements.txt (line 22) because these package versions have conflicting dependencies.
+11.30
+11.30 The conflict is caused by:
+11.30     The user requested click==8.3.0
+11.30     modal 1.0.0 depends on click~=8.1.0

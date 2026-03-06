@@ -31,22 +31,62 @@ function getIndent(line: string): string {
   return match ? match[1] : '    ';
 }
 
+// Log prefix pattern: starts with a timestamp (HH:MM:SS or ISO date), then
+// optionally contains service/level info in brackets, up to the last "]".
+const LOG_PREFIX_RE = /^\d[\d:T. -]+\S*.*\]\s*/;
+
+function stripLogPrefix(line: string): string {
+  const m = line.match(LOG_PREFIX_RE);
+  if (m && m[0].length < line.length) {
+    return line.substring(m[0].length);
+  }
+  return line;
+}
+
 function isFrameLine(line: string): boolean {
   const stripped = stripExcGroupPrefix(line);
-  return FRAME_PATTERNS.some((p) => p.test(stripped));
+  if (FRAME_PATTERNS.some((p) => p.test(stripped))) return true;
+  // Try after stripping log prefix (handles lines like "23:13:38 app[x] [info]  File ...")
+  const withoutPrefix = stripLogPrefix(stripped);
+  if (withoutPrefix !== stripped) {
+    return FRAME_PATTERNS.some((p) => p.test(withoutPrefix));
+  }
+  return false;
 }
 
 function isCaretLine(line: string): boolean {
   const stripped = stripExcGroupPrefix(line).trim();
-  return /^\^+$/.test(stripped);
+  // Pure caret line, or a line whose only meaningful content is carets
+  // (handles log prefixes like "23:13:38 app[x] lax [info]   ^^^^")
+  return /^\^+$/.test(stripped) || /\s\^{3,}\s*$/.test(line);
+}
+
+// Extract the log prefix from a frame line (the part before the frame content).
+// For example: "23:13:38 app[$1] lax [info]  File ..." → "23:13:38 app[$1] lax [info]"
+// Uses specific frame-start markers rather than the generic FRAME_PATTERNS to
+// avoid false matches on timestamps (the Go pattern /\S+:\d+/ matches "23:13:38").
+const FRAME_START_RE = /\s(?:File\s+"|at\s+\S)/;
+function extractLogPrefix(frameLine: string): string {
+  const m = frameLine.match(FRAME_START_RE);
+  if (m && m.index !== undefined && m.index > 0) {
+    // Return everything up to (but not including) the whitespace before "File"/"at"
+    return frameLine.substring(0, m.index);
+  }
+  return '';
 }
 
 // Check if a line is a code line belonging to the preceding frame.
 // Code lines are indented or have a | prefix. Lines starting at column 0
-// (after stripping \r) are never part of a frame.
-function isCodeLine(line: string, stripped: string): boolean {
-  const trimmedLine = line.replace(/\r$/, '');
-  if (trimmedLine.length > 0 && !/^\s/.test(trimmedLine) && !/^\|/.test(trimmedLine)) return false;
+// (after stripping \r) are never part of a frame — unless they share a log
+// prefix with the preceding frame line (e.g., Fly.io prefixed output).
+function isCodeLine(line: string, stripped: string, logPrefix?: string): boolean {
+  let effectiveLine = line.replace(/\r$/, '');
+  // If the line shares the same log prefix as the frame, strip it before
+  // checking indentation (the actual code content is indented after the prefix).
+  if (logPrefix && effectiveLine.startsWith(logPrefix)) {
+    effectiveLine = effectiveLine.substring(logPrefix.length);
+  }
+  if (effectiveLine.length > 0 && !/^\s/.test(effectiveLine) && !/^\|/.test(effectiveLine)) return false;
   if (stripped === '') return false;
   if (/^[A-Za-z_][\w.]*(?:Error|Exception|Warning):/.test(stripped)) return false;
   if (/^ExceptionGroup:/.test(stripped)) return false;
@@ -120,12 +160,43 @@ function isSeparatorLine(line: string): boolean {
   return /^[+\-]+$/.test(stripped);
 }
 
-// Normalize a folded traceback block for comparison: strip | prefixes, separators, whitespace
-function traceSignature(lines: string[]): string {
-  return lines
-    .filter(l => !isSeparatorLine(l))
-    .map(l => stripExcGroupPrefix(l).trim())
-    .join('\n');
+// Normalize a line for signature comparison: strip exc-group prefix, log prefix, and whitespace.
+function normalizeSigLine(line: string): string {
+  let s = stripExcGroupPrefix(line);
+  // Strip log prefix (e.g., "23:13:38 app[$1] lax [info]") for comparison
+  const withoutPrefix = stripLogPrefix(s);
+  if (withoutPrefix !== s) s = withoutPrefix;
+  return s.trim();
+}
+
+// Build a signature from only user-code frames and the trailing error message.
+// Framework frames (and their code lines) are excluded so that two traces
+// sharing the same app frames + error but differing in framework preamble
+// (e.g., one starts from uvicorn, the other from importlib) match as duplicates.
+// Log prefixes and timestamps are stripped so timestamps don't prevent matching.
+function userFrameSignature(units: FrameUnit[], traceBlock: string[]): string {
+  const parts: string[] = [];
+  for (const unit of units) {
+    if (!unit.isFramework) {
+      for (const line of unit.lines) {
+        parts.push(normalizeSigLine(line));
+      }
+    }
+  }
+  // Append trailing lines from traceBlock that aren't frame/annotation lines
+  // (i.e., the error message like "ModuleNotFoundError: No module named 'torch'")
+  for (const line of traceBlock) {
+    const stripped = normalizeSigLine(line);
+    if (stripped === '') continue;
+    if (isFrameLine(line)) continue;
+    if (/\[\.{3}\s+\d+\s+(?:framework\s+)?frames?\s/.test(line)) continue;
+    if (isSeparatorLine(line)) continue;
+    if (/^[A-Za-z_][\w.]*(?:Error|Exception|Warning):/.test(stripped) ||
+        /^ExceptionGroup:/.test(stripped)) {
+      parts.push(stripped);
+    }
+  }
+  return parts.filter(p => p !== '').join('\n');
 }
 
 export const foldStackTraces: Transform = {
@@ -153,12 +224,13 @@ export const foldStackTraces: Transform = {
         while (i < lines.length && isFrameLine(lines[i])) {
           const frameLine = lines[i];
           const unitLines = [frameLine];
+          const prefix = extractLogPrefix(frameLine);
           i++;
 
           // Consume following non-frame lines as code lines of this frame
           while (i < lines.length && !isFrameLine(lines[i])) {
             const stripped = stripExcGroupPrefix(lines[i]).trim();
-            if (!isCodeLine(lines[i], stripped)) break;
+            if (!isCodeLine(lines[i], stripped, prefix)) break;
             unitLines.push(lines[i]);
             i++;
           }
@@ -181,13 +253,18 @@ export const foldStackTraces: Transform = {
           i++;
         }
 
-        // Check if this trace is a duplicate of a previous one
-        const sig = traceSignature(traceBlock);
-        const dupIndex = seenTraces.indexOf(sig);
-        if (dupIndex !== -1) {
+        // Check if this trace is a duplicate of a previous one.
+        // Use the user-frame signature (excluding framework frames) so that
+        // traces differing only in framework preamble match. Use suffix matching
+        // so a fragment (e.g., mid-trace start in a crash loop) matches the full trace.
+        const userSig = userFrameSignature(units, traceBlock);
+        const isDuplicate = userSig !== '' && seenTraces.some(
+          prev => prev.endsWith(userSig) || userSig.endsWith(prev)
+        );
+        if (isDuplicate) {
           result.push(`  [... duplicate traceback omitted ...]`);
         } else {
-          seenTraces.push(sig);
+          seenTraces.push(userSig);
           result.push(...traceBlock);
         }
       } else {

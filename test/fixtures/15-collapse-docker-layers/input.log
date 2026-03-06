@@ -1,0 +1,16 @@
+ => => exporting layers                                                    479.4s
+ => => exporting manifest sha256:0a22c036758a                              0.0s
+ => => exporting config sha256:82bf24244b28                                0.0s
+ => => pushing layers for registry.fly.io/myapp:deploy-abc123@sha256     102.3s
+ => => pushing layer sha256:82bf24244b28                                   1.0s
+ => => pushing layer sha256:dc98622cdf93                                   0.4s
+ => => pushing layer sha256:a09b60d7f24d                                 102.3s
+ => => pushing layer sha256:31b678d80072                                   0.2s
+ => => pushing layer sha256:b4db6c146fd5                                   0.7s
+ => => pushing layer sha256:449d6eb3682d                                   0.9s
+ => => pushing layer sha256:8078a9560df0                                   0.9s
+ => => pushing layer sha256:49739a1bf81e                                   0.9s
+ => => pushing layer sha256:6943082c9e62                                   0.1s
+ => => pushing layer sha256:0fea14406594                                   0.9s
+ => => pushing manifest for registry.fly.io/myapp:deploy-abc123@sha256     0.1s
+--> Build Summary:

@@ -1,0 +1,5 @@
+INFO: Application starting
+[... 5 lines omitted ...]
+ => [1/6] FROM docker.io/library/python:3.11-slim@sha256:abc123  2.3s
+[... 4 lines omitted ...]
+INFO: Build complete

@@ -1,0 +1,8 @@
+ => ERROR [5/6] RUN pip install --no-cache-dir -r requirements.txt                                                13.2s
+pip: fastapi==0.108.0 uvicorn==0.25.0 starlette==0.32.0.post1 pydantic==2.5.0 boto3==1.35.0
+pip: +3 transitive deps (aiohappyeyeballs>=2.5.0 aiosignal>=1.4.0 attrs>=17.3.0)
+11.30 ERROR: Cannot install -r requirements.txt (line 22) because these package versions have conflicting dependencies.
+11.30
+11.30 The conflict is caused by:
+11.30     The user requested click==8.3.0
+11.30     modal 1.0.0 depends on click~=8.1.0

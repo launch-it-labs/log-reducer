@@ -14,6 +14,7 @@ const EPOCH_RE = new RegExp(EPOCH_PLACEHOLDER.replace(/[<>]/g, '\\$&'), 'g');
 export function skeleton(line: string): string {
   return line
     .replace(/\$\d+/g, '<ID>')        // Already-shortened IDs
+    .replace(/https?:\/\/\S+/g, '<URL>')  // Full URLs (before number replacement)
     .replace(/\d+/g, '<N>')           // Numbers (no \b — matches 2574MB, v2, etc.)
     .replace(/\d{2}:\d{2}:\d{2}/g, '<T>')  // Times (HH:MM:SS)
     .replace(EPOCH_RE, '<T>')          // Epoch placeholders from timestamp transform
