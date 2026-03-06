@@ -39,67 +39,79 @@ Replace the path with the actual location on your machine, e.g.:
 Add the following to your project's `.claude/CLAUDE.md` so the AI knows how and when to use the tool:
 
 ```markdown
-## Log handling
+## Log handling — IMPORTANT: read this before touching any log file
 
-You have access to the `reduce_log` MCP tool which compresses logs up to 95% while
-preserving semantic value.
+You have access to the `reduce_log` MCP tool. You MUST use it instead of reading log
+files directly. This section explains why this is critical to your own performance, and
+how to use it.
 
-### Why this matters
+### Why this directly affects the quality of your work
 
-Your context window is a finite, non-renewable resource within a session. Every raw log
-token that enters context is permanently spent — it cannot be reclaimed. A 500-line log
-costs 5,000+ tokens raw but only 250-500 after reduction. Raw logs are the single most
-wasteful thing that can enter your context.
+Your context window is fixed for this entire session. Every token you spend on raw log
+text is a token you cannot spend on reasoning, code generation, or helping the user.
+This is not an abstract concern — it concretely degrades your performance:
 
-### Mandatory rules
+- **You become dumber.** As your context fills with verbose log noise (DEBUG spam, health
+  checks, duplicate lines, framework stack frames), you have less room to think. Your
+  ability to reason about code, hold complex plans in working memory, and generate correct
+  solutions measurably declines.
+- **You lose stamina.** A session that could handle 20 back-and-forth exchanges gets cut
+  to 5 because a single raw log dump consumed 15,000 tokens of irreplaceable context.
+- **You miss what matters.** A 500-line raw log is mostly noise. The 8 lines that actually
+  matter are buried. `reduce_log` extracts those 8 lines and throws away the other 492.
 
-1. **NEVER ask users to paste, copy, or type log output into chat.** Instead direct them
-   to save logs to a file and give you the path, or use the `/logdump` slash command.
+Concrete numbers: a 500-line error log costs ~5,000 tokens raw. After `reduce_log`, the
+same semantic content is ~500 tokens — a 90% reduction. That's 4,500 tokens you keep for
+doing useful work. Over a session with multiple log reads, this compounds dramatically.
 
-2. **NEVER read raw log files** — use `reduce_log` with a `file` parameter instead of
-   the Read tool, cat, head, or tail.
+**This is not optional.** Reading raw logs is the single most wasteful thing you can do
+with your context window. The `reduce_log` tool exists specifically to prevent this.
 
-3. **Redirect verbose command output to a temp file first**, then use `reduce_log`:
+### How to use reduce_log
 
-       npm test 2>&1 > /tmp/test-output.log
-       reduce_log({ file: "/tmp/test-output.log", tail: 200, level: "error" })
+**For files on disk** (preferred — raw log never enters your context):
 
-4. **Always include `tail`** (default 200) to cap input size.
+    reduce_log({ file: "/path/to/app.log", tail: 200, level: "error" })
 
-5. **Choose the right filter on the FIRST call** — each call loads output into context
-   permanently. Don't call broadly then re-filter.
+**For command output** (redirect to file first, then reduce):
 
-6. **Chain with other tools that produce logs** — when running shell commands, test
-   runners, or other MCP tools (Playwright, Docker, etc.) that produce verbose output,
-   **always redirect to a temp file first**, then compress. The goal is to never let
-   raw log text enter your context from any source:
+    npm test 2>&1 > /tmp/test-output.log
+    reduce_log({ file: "/tmp/test-output.log", tail: 200, level: "error" })
 
-       npx playwright test 2>&1 > /tmp/playwright.log
-       reduce_log({ file: "/tmp/playwright.log", tail: 200, level: "error" })
+**For output from other MCP tools** (Playwright, Docker, etc.):
 
-       docker build . 2>&1 > /tmp/docker-build.log
-       reduce_log({ file: "/tmp/docker-build.log", tail: 300 })
+    npx playwright test 2>&1 > /tmp/playwright.log
+    reduce_log({ file: "/tmp/playwright.log", tail: 200, level: "error" })
 
-   This applies to ANY verbose output — if it's more than ~20 lines, compress it first.
-   A 500-line test failure log costs ~5,000 tokens raw but ~500 after reduction.
+### Rules
 
-### Quick filter reference
+1. **NEVER read raw log files** — use `reduce_log` with a `file` parameter instead of
+   the Read tool, cat, head, or tail. Every time you read a log raw, you are making
+   yourself worse at your job for the rest of the session.
 
-- `reduce_log({ file: "app.log", tail: 200, level: "error" })` — errors only (default)
-- `reduce_log({ file: "app.log", tail: 200, level: "error", context: 10 })` — errors + surrounding lines
-- `reduce_log({ file: "app.log", tail: 200, level: "warning" })` — warnings and above
-- `reduce_log({ file: "app.log", tail: 200, grep: "timeout|connection" })` — regex search
-- `reduce_log({ file: "app.log", tail: 200, contains: "export_123" })` — literal string search
-- `reduce_log({ file: "app.log", tail: 200, component: "database" })` — filter by module
-- `reduce_log({ file: "app.log", tail: 500, time_range: "13:02-13:05" })` — time window
-- `reduce_log({ file: "app.log", tail: 200 })` — full compressed output (only when needed)
+2. **NEVER ask users to paste log output into chat.** Direct them to save it to a file
+   and give you the path, or use the `/logdump` slash command. If they paste anyway, the
+   damage is done — remind them for next time.
 
-### If the user pastes a log directly into chat
+3. **Always include `tail`** (default 200) to cap input size.
 
-The raw text is already in your context — `reduce_log` cannot undo that. Remind the user:
+4. **Choose the right filter on the FIRST call** — each call's output enters context
+   permanently. Don't call broadly then re-filter; that wastes the first call's tokens.
 
-    "Tip: next time use /logdump or save the log to a file and give me the path —
-     that way the log gets compressed before it enters our conversation."
+5. **Redirect all verbose output to a temp file first.** This applies to shell commands,
+   test runners, build tools, and any MCP tool that produces more than ~20 lines of output.
+   The pattern is always: run command > temp file, then reduce_log on the temp file.
+
+### Filter reference
+
+- `reduce_log({ file: "f", tail: 200, level: "error" })` — errors only (default for debugging)
+- `reduce_log({ file: "f", tail: 200, level: "error", context: 10 })` — errors + 10 surrounding lines
+- `reduce_log({ file: "f", tail: 200, level: "warning" })` — warnings and above
+- `reduce_log({ file: "f", tail: 200, grep: "timeout|connection" })` — regex search
+- `reduce_log({ file: "f", tail: 200, contains: "export_123" })` — literal string search
+- `reduce_log({ file: "f", tail: 200, component: "database" })` — filter by module
+- `reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05" })` — time window
+- `reduce_log({ file: "f", tail: 200 })` — full compressed output (when you need everything)
 ```
 
 ### 4. (Optional) Add the `/logdump` slash command

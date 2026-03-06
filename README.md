@@ -133,7 +133,7 @@ Add Log Reducer to any project so the AI automatically compresses logs instead o
 }
 ```
 
-**Step 2** — Add instructions to your project's `.claude/CLAUDE.md` telling the AI to use `reduce_log` instead of reading raw log files.
+**Step 2** — Copy the AI instructions block from [docs/agent-integration.md](docs/agent-integration.md#3-add-ai-instructions-to-your-claudemd) into your project's `.claude/CLAUDE.md`. This block explains to the AI *why* using `reduce_log` is in its own self-interest (context = intelligence), not just a rule — which dramatically increases compliance.
 
 **Step 3** — (Optional) Copy `.claude/commands/logdump.md` into your project for a `/logdump` slash command that dumps clipboard contents to a file and compresses automatically.
 
