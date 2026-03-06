@@ -196,7 +196,7 @@ When consecutive lines share the same structure but differ in specific values, i
 ## Installation
 
 ```bash
-git clone https://github.com/imankha/log-reducer.git
+git clone https://github.com/launch-it-labs/log-reducer.git
 cd log-reducer
 npm install
 npm run compile
@@ -206,7 +206,7 @@ npm run compile
 
 **The easiest way to contribute is to paste a log file.** Open this project in Claude Code, paste a log into the chat, and the AI will analyze it, implement improvements for patterns it finds, and create a PR. No code knowledge required — your log becomes a test fixture that makes the pipeline better for everyone. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-You can also [submit a log via GitHub issue](https://github.com/imankha/log-reducer/issues/new?template=log-sample.yml) if you don't use Claude Code.
+You can also [submit a log via GitHub issue](https://github.com/launch-it-labs/log-reducer/issues/new?template=log-sample.yml) if you don't use Claude Code.
 
 For code contributions (new transforms, bug fixes), see [CONTRIBUTING.md](CONTRIBUTING.md).
 

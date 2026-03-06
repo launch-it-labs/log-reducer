@@ -37,7 +37,7 @@ That's it. You paste a log, the AI does the engineering work. Your log becomes a
 
 If you don't use Claude Code, you can still contribute logs:
 
-1. [Open an issue](https://github.com/imankha/log-reducer/issues/new?template=log-sample.yml) with the `log-sample` template
+1. [Open an issue](https://github.com/launch-it-labs/log-reducer/issues/new?template=log-sample.yml) with the `log-sample` template
 2. Paste your log (scrub secrets first)
 3. A maintainer will run it through the eval workflow
 
@@ -50,7 +50,7 @@ If you don't use Claude Code, you can still contribute logs:
 ### Setup
 
 ```bash
-git clone https://github.com/imankha/log-reducer.git
+git clone https://github.com/launch-it-labs/log-reducer.git
 cd log-reducer
 npm install
 ```

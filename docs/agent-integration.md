@@ -7,7 +7,7 @@ Log Reducer is an MCP (Model Context Protocol) tool and CLI that compresses log 
 ### 1. Install Log Reducer
 
 ```bash
-git clone https://github.com/imankha/log-reducer.git
+git clone https://github.com/launch-it-labs/log-reducer.git
 cd log-reducer
 npm install
 npm run compile
