@@ -222,20 +222,35 @@ function applyFocus(input: string, focus: FocusOptions): string {
     try { notGrepRe = new RegExp(focus.not_grep, 'i'); } catch { /* invalid — skip */ }
   }
 
-  // Mark lines that match any active inclusion filter (OR logic)
+  // When time_range is set, it acts as an AND scope — only lines within the
+  // time window are candidates. Other filters (level, grep, etc.) select within
+  // that window via OR logic. When time_range is the *only* filter, all lines
+  // in the window are included.
+  const hasInclusionFilter = !!(focus.level || focus.grep || focus.contains || focus.component);
+
   const matchedIndices: number[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
+    // time_range is an AND scope: exclude lines outside the window
+    if (timeRange && !lineMatchesTimeRange(line, timeRange)) continue;
+
     let isMatch = false;
-    if (focus.level && lineMatchesLevel(line, focus.level)) isMatch = true;
-    if (focus.grep) {
-      try {
-        if (new RegExp(focus.grep, 'i').test(line)) isMatch = true;
-      } catch { /* invalid regex — skip */ }
+
+    if (hasInclusionFilter) {
+      // OR logic among inclusion filters
+      if (focus.level && lineMatchesLevel(line, focus.level)) isMatch = true;
+      if (focus.grep) {
+        try {
+          if (new RegExp(focus.grep, 'i').test(line)) isMatch = true;
+        } catch { /* invalid regex — skip */ }
+      }
+      if (focus.contains && line.includes(focus.contains)) isMatch = true;
+      if (focus.component && lineMatchesComponent(line, focus.component)) isMatch = true;
+    } else if (timeRange) {
+      // time_range is the only filter — include all lines in the window
+      isMatch = true;
     }
-    if (focus.contains && line.includes(focus.contains)) isMatch = true;
-    if (focus.component && lineMatchesComponent(line, focus.component)) isMatch = true;
-    if (timeRange && lineMatchesTimeRange(line, timeRange)) isMatch = true;
 
     // Apply exclusion filter — remove even if an inclusion filter matched
     if (isMatch && notGrepRe && notGrepRe.test(line)) isMatch = false;

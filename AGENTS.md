@@ -36,7 +36,7 @@ The pipeline applies 11 transforms in order:
 3. Shorten IDs (UUIDs, hex strings, JWT tokens, generated IDs → `$1`, `$2`, ...)
 4. Shorten URLs (strip query params, collapse long paths)
 5. Simplify timestamps
-6. Filter noise (DEBUG lines, health checks, heartbeats, devtools artifacts)
+6. Filter noise (health checks, heartbeats, devtools artifacts)
 7. Strip source locations (browser console `file.js:line` prefixes)
 8. Compress shared prefixes (factor out repeated date/module/time prefixes)
 9. Deduplicate consecutive identical/near-identical lines

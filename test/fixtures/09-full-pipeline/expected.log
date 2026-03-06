@@ -1,10 +1,12 @@
 14:32:01 INFO Application started
-[... 2 lines omitted ...]
+  DEBUG Loading configuration from /etc/app/config.yaml
+  DEBUG Connecting to database
 14:32:02 INFO Connected to database
 
 14:32:03 INFO Processing request $1
-  Request $1 completed
-[... above 3-line block repeated 3 more times ...]
+  DEBUG Validating input for request $1
+  INFO Request $1 completed
+[... above 4-line block repeated 3 more times ...]
 
 [... 4 lines omitted ...]
 

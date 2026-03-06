@@ -93,7 +93,7 @@ src/
     shortenIds.ts       Replace UUIDs/hashes/tokens/underscore IDs with $1, $2...
     shortenUrls.ts      Strip query params, collapse long URL paths
     simplifyTimestamps.ts   Shorten verbose timestamps
-    filterNoise.ts      Remove DEBUG, health checks, heartbeats, devtools noise
+    filterNoise.ts      Remove health checks, heartbeats, devtools noise
     stripSourceLocations.ts  Strip browser console file.js:line prefixes
     compressPrefix.ts   Factor out repeated log prefixes, strip separators
     deduplicate.ts      Collapse consecutive similar lines

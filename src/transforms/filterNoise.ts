@@ -4,17 +4,18 @@ import { Transform } from '../types';
  * Filter out low-signal log lines.
  *
  * Removes:
- * - DEBUG/TRACE level lines
  * - Health check endpoints
  * - Heartbeat/keepalive messages
  * - Metric/telemetry emission lines
  * - Empty log entries
+ *
+ * NOTE: DEBUG/TRACE lines are NOT filtered here. The driving AI controls
+ * log level via the `level` focus filter (e.g., level: "warning" to exclude
+ * DEBUG/INFO). This keeps DEBUG context available for causal-chain analysis
+ * when using before/after context around errors.
  */
 
 const NOISE_PATTERNS: RegExp[] = [
-  // Log levels: DEBUG and TRACE (but not file extensions like .debug)
-  /(?:^|[\s\[:])(?:DEBUG|TRACE)\b/i,
-
   // Health check endpoints (with optional path prefix like /api/)
   /(?:GET|POST|HEAD)\s+\S*\/(?:health|healthz|healthcheck|readyz|livez|ready|alive|ping|status)\b/i,
   /health[\s_-]?check/i,

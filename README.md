@@ -196,13 +196,13 @@ Total: ~1,050 tokens. The agent found the root cause (connection pool exhaustion
 
 Every response includes a token count header — e.g., `[150 tokens (raw input: 2000 tokens)]` — so the agent can judge whether the reduced output is sufficient or worth re-querying unreduced.
 
-These compose with the existing filters (`level`, `grep`, `contains`, `component`, `context`, `tail`). All filters combine via OR for inclusion, with `not_grep` applied as a post-filter exclusion.
+These compose with the existing filters (`level`, `grep`, `contains`, `component`, `context`, `tail`). Inclusion filters (`level`, `grep`, `contains`, `component`) combine via OR. `time_range` is an AND scope — it restricts the window, then inclusion filters select within it. `not_grep` is applied as a post-filter exclusion.
 
 ## What it does to your logs
 
 Biggest impact first:
 
-- **Noise filtered** — DEBUG/TRACE lines, health checks, heartbeats, progress bars removed entirely
+- **Noise filtered** — health checks, heartbeats, progress bars removed (DEBUG/TRACE lines kept — the AI chooses when to exclude them via `level` filter)
 - **Stack traces folded** — 80 frames → your code frames + `[... N framework frames omitted ...]`
 - **Repeated lines collapsed** — 6 similar lines → one template with varying values listed
 - **Log prefixes factored** — 8 lines sharing `timestamp - module - LEVEL` → 1 header + indented messages
