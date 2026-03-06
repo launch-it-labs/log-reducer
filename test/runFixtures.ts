@@ -6,7 +6,7 @@ import { minify, ALL_TRANSFORMS } from '../src/pipeline';
 const FIXTURES_DIR = path.join(__dirname, '..', '..', 'test', 'fixtures');
 
 // Look up a transform by its settingKey (the programmatic ID used in
-// PipelineOptions and package.json — less fragile than display names).
+// PipelineOptions — less fragile than display names).
 function findTransform(settingKey: string): (input: string) => string {
   const t = ALL_TRANSFORMS.find(t => t.settingKey === settingKey);
   if (!t) throw new Error(`Unknown transform settingKey: ${settingKey}`);
@@ -28,6 +28,10 @@ const TEST_CASES: TestCase[] = [
   { name: '06-detect-cycles', transform: findTransform('detectCycles') },
   { name: '07-filter-noise', transform: findTransform('filterNoise') },
   { name: '08-fold-stack-traces', transform: findTransform('foldStackTraces') },
+  { name: '12-collapse-pip-output', transform: findTransform('collapsePipOutput') },
+  { name: '13-collapse-retries', transform: findTransform('collapseRetries') },
+  { name: '14-filter-noise-extended', transform: findTransform('filterNoise') },
+  { name: '15-collapse-docker-layers', transform: findTransform('collapseDockerLayers') },
   // Full pipeline
   { name: '09-full-pipeline', transform: null },
   { name: '10-real-world-python', transform: null },
@@ -36,31 +40,6 @@ const TEST_CASES: TestCase[] = [
 
 let passed = 0;
 let failed = 0;
-
-// ── Config sync check ─────────────────────────────────────────────────
-// Verify that every transform's settingKey has a matching entry in package.json.
-const PKG_PATH = path.join(__dirname, '..', '..', 'package.json');
-const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8'));
-const configProps: Record<string, unknown> = pkg.contributes?.configuration?.properties ?? {};
-const configKeys = new Set(Object.keys(configProps).map(k => k.replace('logreducer.', '')));
-const codeKeys = ALL_TRANSFORMS.map(t => t.settingKey);
-
-for (const key of codeKeys) {
-  if (!configKeys.has(key)) {
-    console.log(`  FAIL  config-sync: settingKey "${key}" missing from package.json`);
-    failed++;
-  }
-}
-for (const key of configKeys) {
-  if (!codeKeys.includes(key)) {
-    console.log(`  FAIL  config-sync: package.json key "logreducer.${key}" has no matching transform`);
-    failed++;
-  }
-}
-if (configKeys.size === codeKeys.length && codeKeys.every(k => configKeys.has(k))) {
-  console.log(`  PASS  config-sync (${codeKeys.length} keys match)`);
-  passed++;
-}
 
 // ── Fixture tests ─────────────────────────────────────────────────────
 for (const tc of TEST_CASES) {

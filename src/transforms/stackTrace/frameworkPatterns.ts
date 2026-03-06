@@ -10,7 +10,7 @@ export const FRAME_PATTERNS = [
   /^\s*at\s+/,                              // Java, Node.js, .NET
   /^\s*File\s+"[^"]+",\s+line\s+\d+/,      // Python
   /^\s*\S+\.go:\d+/,                        // Go
-  /^\t*\S+:\d+/,                            // Go alternative
+  /^\t+\S+\/\S+:\d+/,                       // Go alternative (tab-indented path)
 ];
 
 // Framework/internal packages to collapse.
@@ -37,6 +37,7 @@ export const FRAMEWORKS: { pattern: RegExp; name: string | null }[] = [
   { pattern: /concurrent\/futures/, name: null },
   { pattern: /asyncio\//, name: 'asyncio' },
   { pattern: /anyio\//, name: 'anyio' },
+  { pattern: /click\//, name: 'click' },
   { pattern: /uvicorn\//, name: 'uvicorn' },
   { pattern: /starlette\//, name: 'starlette' },
   { pattern: /fastapi\//, name: 'fastapi' },

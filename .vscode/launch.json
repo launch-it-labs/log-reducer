@@ -2,15 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Extension",
-      "type": "extensionHost",
+      "name": "Run CLI",
+      "type": "node",
       "request": "launch",
-      "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}"
-      ],
-      "outFiles": [
-        "${workspaceFolder}/out/**/*.js"
-      ],
+      "program": "${workspaceFolder}/out/src/cli.js",
+      "console": "integratedTerminal",
+      "preLaunchTask": "npm: compile"
+    },
+    {
+      "name": "Run MCP Server",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/out/src/mcp-server.js",
+      "console": "integratedTerminal",
       "preLaunchTask": "npm: compile"
     }
   ]

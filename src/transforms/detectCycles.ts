@@ -43,8 +43,10 @@ export const detectCycles: Transform = {
           pos += cycleLen;
         }
 
-        // Only collapse if the block repeats 3+ times (meaningful cycle)
-        if (reps >= 3) {
+        // For 2-line blocks, require 3+ reps (6 lines → saves 4).
+        // For 3+ line blocks, 2 reps is enough (6+ lines → saves 3+).
+        const minReps = cycleLen >= 3 ? 2 : 3;
+        if (reps >= minReps) {
           // Emit the first occurrence
           for (let j = 0; j < cycleLen; j++) {
             result.push(lines[i + j]);

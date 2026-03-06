@@ -3,9 +3,8 @@
 14:32:02 INFO Connected to database
 
 14:32:03 INFO Processing request $1
-[... 1 lines omitted ...]
-14:32:03 INFO Request $1 completed
-[... above 4-line block repeated 3 more times ...]
+  Request $1 completed
+[... above 3-line block repeated 3 more times ...]
 
 [... 4 lines omitted ...]
 

@@ -122,10 +122,13 @@ async function runTests(): Promise<void> {
       fail('mcp-tools-list', `reduce_log not found in tools: ${JSON.stringify(tools.map((t: any) => t.name))}`);
     }
 
-    if (reduceTool?.inputSchema?.properties?.log_text?.type === 'string') {
+    if (
+      reduceTool?.inputSchema?.properties?.log_text?.type === 'string' &&
+      reduceTool?.inputSchema?.properties?.file?.type === 'string'
+    ) {
       pass('mcp-tool-schema');
     } else {
-      fail('mcp-tool-schema', `Missing or wrong log_text in inputSchema: ${JSON.stringify(reduceTool?.inputSchema)}`);
+      fail('mcp-tool-schema', `Missing log_text or file in inputSchema: ${JSON.stringify(reduceTool?.inputSchema)}`);
     }
 
     if (reduceTool?.description?.includes('token reduction')) {
@@ -325,14 +328,251 @@ async function runTests(): Promise<void> {
       fail('mcp-empty-input', `Unexpected response: ${JSON.stringify(emptyResponse)}`);
     }
 
-    // ── Test 10: large input (verify no crash) ──────────────────────
+    // ── Test 10: file parameter — raw logs never enter LLM context ──
+    // Simulate: AI redirects command output to a temp file, passes path to MCP.
+    // The raw log text never enters the conversation — only the compressed result.
+    const tmpLogPath = path.join(__dirname, '..', 'test', 'fixtures', 'tmp-eval', 'mcp-test-input.log');
+    const testDir = path.dirname(tmpLogPath);
+    if (!require('fs').existsSync(testDir)) {
+      require('fs').mkdirSync(testDir, { recursive: true });
+    }
+    require('fs').writeFileSync(tmpLogPath, [
+      '2026-03-05 13:02:15 - app.video_encoder - INFO - ============================================================',
+      '2026-03-05 13:02:15 - app.video_encoder - INFO - Starting single-pass encoding...',
+      '2026-03-05 13:02:15 - app.video_encoder - INFO - Input framerate: 29.97fps',
+      '2026-03-05 13:02:15 - app.video_encoder - INFO - Output framerate: 30fps',
+      '2026-03-05 13:02:15 - app.video_encoder - INFO - ============================================================',
+      '2026-03-05 13:02:16 - app.export - INFO - Encoding frame 25/449',
+      '2026-03-05 13:02:17 - app.export - INFO - Encoding frame 100/449',
+      '2026-03-05 13:02:18 - app.export - INFO - Encoding frame 200/449',
+      '2026-03-05 13:02:20 - app.export - INFO - Encoding frame 449/449',
+      '2026-03-05 13:02:20 - app.video_encoder - ERROR - Frame 312 decode failed: corrupted NAL unit',
+      '2026-03-05 13:02:20 - app.video_encoder - WARNING - Skipped 1 corrupted frame',
+      '2026-03-05 13:02:23 - app.video_encoder - INFO - Single-pass encoding complete!',
+    ].join('\n'));
+
+    const fileResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 10,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { file: tmpLogPath },
+      },
+    });
+
+    const fileText: string = fileResponse.result?.content?.[0]?.text ?? '';
+    if (fileText.includes('encoding') && fileText.length > 0 && !fileResponse.error) {
+      pass('mcp-file-param');
+    } else {
+      fail('mcp-file-param', `File read failed: ${JSON.stringify(fileResponse.error ?? fileText)}`);
+    }
+
+    // ── Test 11: file + level filter — errors-only debugging ────────
+    // Simulate: "Show me just the errors from this log"
+    // Focus filters run post-compression, so with a small log the output
+    // may not have "omitted" annotations — but the error must be present.
+    const errorResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 11,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { file: tmpLogPath, level: 'error', context: 1 },
+      },
+    });
+
+    const errorText: string = errorResponse.result?.content?.[0]?.text ?? '';
+    if (errorText.includes('corrupted NAL')) {
+      pass('mcp-focus-level-error');
+    } else {
+      fail('mcp-focus-level-error', `Level filter didn't isolate errors: ${JSON.stringify(errorText)}`);
+    }
+
+    // ── Test 12: file + component filter ─────────────────────────────
+    // Simulate: "Show me only the video_encoder logs"
+    const compResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 12,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { file: tmpLogPath, component: 'video_encoder' },
+      },
+    });
+
+    const compText: string = compResponse.result?.content?.[0]?.text ?? '';
+    if (compText.includes('video_encoder')) {
+      pass('mcp-focus-component');
+    } else {
+      fail('mcp-focus-component', `Component filter didn't work: ${JSON.stringify(compText)}`);
+    }
+
+    // ── Test 13: file + grep filter (before time_range, uses simpler assertion)
+    // Simulate: "Search for anything related to corruption"
+    const grepResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 13,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { file: tmpLogPath, grep: 'corrupt' },
+      },
+    });
+
+    const grepText: string = grepResponse.result?.content?.[0]?.text ?? '';
+    if (grepText.includes('corrupted')) {
+      pass('mcp-focus-grep');
+    } else {
+      fail('mcp-focus-grep', `Grep filter didn't work: ${JSON.stringify(grepText)}`);
+    }
+
+    // ── Test 15: tail parameter — only recent lines ──────────────────
+    // Simulate: "Just show me the last 5 lines of the log"
+    const tailResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 15,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { file: tmpLogPath, tail: 5 },
+      },
+    });
+
+    const tailText: string = tailResponse.result?.content?.[0]?.text ?? '';
+    // The last 5 lines start from "Encoding frame 449/449", so shouldn't include "frame 25"
+    if (tailText.includes('complete') && !tailText.includes('frame 25')) {
+      pass('mcp-tail');
+    } else {
+      fail('mcp-tail', `Tail didn't limit to last lines: ${JSON.stringify(tailText)}`);
+    }
+
+    // ── Test 16: missing input — neither file nor log_text ───────────
+    const noInputResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 16,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: {},
+      },
+    });
+
+    if (noInputResponse.error) {
+      pass('mcp-error-no-input');
+    } else {
+      fail('mcp-error-no-input', `Expected error, got: ${JSON.stringify(noInputResponse)}`);
+    }
+
+    // ── Test 17: bad file path ───────────────────────────────────────
+    const badFileResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 17,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { file: '/nonexistent/path/to/log.txt' },
+      },
+    });
+
+    if (badFileResponse.error) {
+      pass('mcp-error-bad-file');
+    } else {
+      fail('mcp-error-bad-file', `Expected error for bad path, got: ${JSON.stringify(badFileResponse)}`);
+    }
+
+    // ── Test 18: full-stack debugging simulation ─────────────────────
+    // Simulate a real debugging conversation:
+    //   User: "My export is failing, here are the logs: /path/to/export.log"
+    //   AI calls: reduce_log({ file: path, level: "warning", context: 5 })
+    //   Result: only warnings/errors with 5 lines of context, compressed
+    const fullStackLog = [
+      '2026-03-05 10:00:00 - app.main - INFO - Application startup complete',
+      '2026-03-05 10:00:01 - app.database - INFO - Connected to PostgreSQL',
+      '2026-03-05 10:00:01 - app.cache - INFO - Redis connection established',
+      '2026-03-05 10:00:02 - app.auth - INFO - JWT validator initialized',
+      '2026-03-05 10:00:05 - app.api - INFO - GET /api/projects → 200',
+      '2026-03-05 10:00:06 - app.api - INFO - GET /api/settings → 200',
+      '2026-03-05 10:00:10 - app.export - INFO - Starting export job abc-123',
+      '2026-03-05 10:00:11 - app.export - INFO - Extracting frames...',
+      '2026-03-05 10:00:15 - app.export - INFO - Frame 1/100 extracted',
+      '2026-03-05 10:00:16 - app.export - INFO - Frame 2/100 extracted',
+      '2026-03-05 10:00:17 - app.export - INFO - Frame 3/100 extracted',
+      '2026-03-05 10:00:18 - app.database - WARNING - Connection pool near capacity (18/20)',
+      '2026-03-05 10:00:19 - app.export - INFO - Frame 4/100 extracted',
+      '2026-03-05 10:00:20 - app.database - ERROR - Connection pool exhausted',
+      '2026-03-05 10:00:20 - app.export - ERROR - Failed to save frame 5: database unavailable',
+      'Traceback (most recent call last):',
+      '  File "app/export.py", line 142, in save_frame',
+      '    db.execute(query)',
+      '  File "sqlalchemy/engine/base.py", line 1412, in execute',
+      '    return self._execute(query)',
+      '  File "sqlalchemy/pool/base.py", line 301, in checkout',
+      '    raise TimeoutError("pool exhausted")',
+      'TimeoutError: pool exhausted',
+      '2026-03-05 10:00:21 - app.export - ERROR - Export job abc-123 failed',
+      '2026-03-05 10:00:22 - app.cleanup - INFO - Cleaning up temp files',
+      '2026-03-05 10:00:23 - app.api - INFO - POST /api/export/retry → 200',
+    ].join('\n');
+
+    const fullStackPath = path.join(testDir, 'mcp-test-fullstack.log');
+    require('fs').writeFileSync(fullStackPath, fullStackLog);
+
+    const debugResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 18,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { file: fullStackPath, level: 'warning', context: 2 },
+      },
+    });
+
+    const debugText: string = debugResponse.result?.content?.[0]?.text ?? '';
+    // Must include the errors and their context, but skip the startup noise
+    const hasErrors = debugText.includes('pool exhausted') && debugText.includes('database unavailable');
+    const hasWarning = debugText.includes('Connection pool near capacity');
+    const skipsStartup = debugText.includes('omitted');
+    if (hasErrors && hasWarning && skipsStartup) {
+      pass('mcp-fullstack-debug');
+    } else {
+      fail('mcp-fullstack-debug', `Full-stack debug didn't isolate issues: ${JSON.stringify(debugText)}`);
+    }
+
+    // ── Test 14 (cont'd): time_range filter on fullstack log ────────
+    // Simulate: "What happened between 10:00:18 and 10:00:21?"
+    const timeResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 14,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { file: fullStackPath, time_range: '10:00:18-10:00:21' },
+      },
+    });
+
+    const timeText: string = timeResponse.result?.content?.[0]?.text ?? '';
+    // Should include the warning/errors from 10:00:18-10:00:21 with context
+    if (timeText.includes('pool') && timeText.includes('omitted')) {
+      pass('mcp-focus-time-range');
+    } else {
+      fail('mcp-focus-time-range', `Time range filter didn't work: ${JSON.stringify(timeText)}`);
+    }
+
+    // Clean up temp files
+    try {
+      require('fs').unlinkSync(tmpLogPath);
+      require('fs').unlinkSync(fullStackPath);
+    } catch { /* ignore cleanup errors */ }
+
+    // ── Test 19: large input (verify no crash) ──────────────────────
     const bigLog = Array.from({ length: 200 }, (_, i) =>
       `2024-01-15T10:${String(i % 60).padStart(2, '0')}:00.000Z [INFO] Line ${i} data=abc12345-def6-7890-abcd-ef1234567890`
     ).join('\n');
 
     const bigResponse = await sendRpc(proc, rl, {
       jsonrpc: '2.0',
-      id: 10,
+      id: 19,
       method: 'tools/call',
       params: {
         name: 'reduce_log',
