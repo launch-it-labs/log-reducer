@@ -6,96 +6,78 @@ Log Reducer sits between the log and the AI. It reduces the file down to just th
 
 It runs as an **MCP server** (the AI calls `reduce_log` with a file path) or as a **CLI** (pipe any log through it). No API keys, no network calls — deterministic text transforms that run instantly.
 
-## Example
+## Example: finding a bug in 2,604 lines
 
-A 198-line application log with startup noise, health checks, order processing, and an error buried in an 80-line stack trace:
+A batch job is leaking database connections. The pool fills up, every API request
+starts failing with 503s. The root cause is one line buried among 2,604.
 
-```
-198 lines, 1440 tokens → 40 lines, 193 tokens (87% reduction)
-```
-
-The stack trace goes from 80 frames to 4 — every framework frame collapsed, only your code preserved:
+The AI doesn't read the log. It interrogates it:
 
 ```
-Traceback (most recent call last):
-  [... 19 framework frames (uvicorn, fastapi, starlette) omitted ...]
-  File "routers/payments.py", line 89, in process_refund
-    result = await stripe_client.refund(amount=order.total, charge_id=order.charge_id)
-  File "services/stripe.py", line 234, in refund
-    raise PaymentError(f"Refund failed: {response.error.message}")
-PaymentError: Refund failed: insufficient funds in merchant account
+STEP 1 — SURVEY (96 tokens)
+reduce_log({ file: "app.log", summary: true })
+
+  SUMMARY (2,604 lines)
+  Time: 09:00:00 — 09:49:39
+  ERROR: 152 (09:47:30 — 09:48:59)       <-- all errors in a 90-second window
+  WARN:    3 (09:47:00 — 09:47:20)       <-- warnings right before
+  Components: app.api, app.batch, app.db
+
+STEP 2 — SCAN (551 tokens)
+reduce_log({ file: "app.log", level: "error", limit: 5, context: 3 })
+
+  WARN [app.db] pool near capacity (active=45, 48, 49)
+  ERROR [app.db] pool exhausted (active=50, idle=0)
+  ERROR [app.api] GET /api/users failed: ConnectionPoolExhausted
+  ERROR [app.api] GET /api/orders failed: ConnectionPoolExhausted
+  ...81 total errors, showing first 5
+
+STEP 3 — ZOOM (1,350 tokens)
+reduce_log({ file: "app.log", time_range: "09:47:25-09:48:10", before: 30 })
+
+  Acquiring connection (active=26, idle=24)     ← pool filling up
+  [app.batch] Processing record 17/2000
+  Acquiring connection (active=27, idle=23)
+  [app.batch] Processing record 18/2000
+  ...
+  Acquiring connection (active=39, idle=11)
+  [app.batch] Processing record 30/2000
+  WARN pool near capacity (active=45)
+  ERROR pool exhausted (active=50, idle=0)
+  ...cascade of 503s...
+  INFO [app.batch] Export batch still running    ← THE CLUE
+    (processed 45/2000, connections held: 30)
+
+STEP 4 — TRACE (186 tokens)
+reduce_log({ file: "app.log", grep: "active=|idle=|batch|held",
+             time_range: "09:45-09:48:30", limit: 15, context: 0 })
+
+  Acquiring connection (active=11, idle=39)     ← staircase pattern
+  Acquiring connection (active=12, idle=38)        one connection per record
+  ...                                              never released
+  Acquiring connection (active=25, idle=25)
 ```
 
-Every error, warning, and meaningful event is preserved. Everything a reader would skip is gone.
+**Four calls. 2,183 tokens. Root cause found.** The batch job is eating one connection
+per record and never giving it back. The raw log never entered the conversation.
 
-<details>
-<summary>Full before/after comparison</summary>
+([Full walkthrough with sequence diagram](docs/how-it-works.md))
 
-**Input** (198 lines, 1440 tokens):
+### Token cost comparison
+
 ```
-2025-07-10T09:14:01.847293Z DEBUG [app.db] Acquiring connection from pool (active=3, idle=12)
-2025-07-10T09:14:01.848104Z DEBUG [app.db] Connection acquired in 0.8ms
-2025-07-10T09:14:01.901002Z DEBUG [app.cache] Redis connection established to 10.0.1.42:6379
-2025-07-10T09:14:01.901445Z DEBUG [app.cache] Cache warmer starting — 24 keys to refresh
-2025-07-10T09:14:02.103882Z DEBUG [app.cache] Refreshed key user_prefs:550e8400-e29b-41d4-a716-446655440000
-...14 more DEBUG lines (cache, DB, auth, middleware)...
-2025-07-10T09:14:03.200445Z INFO [app.server] Application startup complete
-INFO:     127.0.0.1:52340 - "GET /healthz HTTP/1.1" 200 OK
-...8 more health checks...
-2025-07-10 09:14:30 - app.orders - INFO - Processing batch: 8 orders
-2025-07-10 09:14:30 - app.orders - INFO - Order f8c3d2e1-b4a5-4f6e-8d9c-1a2b3c4d5e6f: validating
-...many more order lines, webhooks, heartbeats...
-2025-07-10 09:14:45 - app.payments - ERROR - Refund failed for order f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
-Traceback (most recent call last):
-  ...80 lines of stack trace...
-PaymentError: Refund failed: insufficient funds in merchant account
-...50 more lines of noise...
+                        Tokens    Context used
+                     ─────────────────────────
+Read raw log          25,600        100%        ← noise fills the context window
+reduce_log (one-shot) 16,500         64%        ← reduced, but untargeted
+Funnel (4 calls)       2,183          9%        ← only what the AI needed
+                     ─────────────────────────
+Tokens saved:         23,417                    ← free for reasoning & code
 ```
 
-**Output** (40 lines, 193 tokens):
-```
-[... 18 lines omitted ...]
-09:14:03 INFO [app.server] Application startup complete
-[... 21 lines omitted ...]
-[2025-07-10]
-app.orders - INFO:
-  09:14:30:
-    Processing batch: 8 orders
-    Order $5: validating
-    Order $5: payment confirmed
-    Order $5: shipped
-[... above 3-line block repeated 4 more times ...]
-    Batch complete: 5/8 orders processed, 3 pending payment
-[... 13 lines omitted ...]
-app.webhooks - INFO:
-  09:14:35:
-    Dispatching webhook for event order.shipped to https://partner-api.example.com/hooks/$13
-[... 4 identical lines omitted ...]
-[... 6 lines omitted ...]
-app.payments:
-  09:14:44 - INFO - Processing refund for order $10
-  09:14:44 - INFO - Refund initiated: $127.50 to card ending 4242
-  09:14:45 - ERROR - Refund failed for order $10: insufficient funds in merchant account
-Traceback (most recent call last):
-  [... 19 framework frames (uvicorn, fastapi, starlette) omitted ...]
-  File "routers/payments.py", line 89, in process_refund
-    result = await stripe_client.refund(amount=order.total, charge_id=order.charge_id)
-  File "services/stripe.py", line 234, in refund
-    raise PaymentError(f"Refund failed: {response.error.message}")
-PaymentError: Refund failed: insufficient funds in merchant account
-INFO:     127.0.0.1:52420 - "POST /api/orders/$10/refund HTTP/1.1" 500 Internal Server Error
-[... 8 lines omitted ...]
-app.metrics - INFO:
-  09:14:50:
-    requests_total: 847
-    requests_failed: 12
-    avg_response_ms: 142
-    active_connections: 23
-    cache_hit_rate: 0.94
-    uptime_seconds: 86400
-[... 43 lines omitted ...]
-```
-</details>
+Across [5 simulated production bugs](docs/how-it-works.md#across-5-simulated-bugs)
+(pool exhaustion, auth cascade, memory leak, deploy crash, race condition), the funnel
+pattern used **4% of raw tokens** while finding every root cause.
 
 ## Setup
 
