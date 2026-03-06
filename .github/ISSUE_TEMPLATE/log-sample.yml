@@ -1,0 +1,41 @@
+name: Log Sample
+description: Submit a log file to help improve the pipeline
+title: "[log-sample] "
+labels: ["log-sample"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing a log sample! Every new log format helps the pipeline
+        handle more real-world cases.
+
+        **Before pasting: scrub any secrets** (API keys, passwords, tokens, personal data).
+        Your log will become a public test fixture.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log content
+      description: Paste the raw log (100-500 lines is ideal)
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: What produced this log? (e.g., "Python FastAPI app", "Docker build", "npm test output", "Kubernetes pod logs")
+      placeholder: e.g., Python Django app with Celery workers
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: Anything specific you noticed — patterns the pipeline should collapse, errors it should preserve, etc.
+  - type: checkboxes
+    id: scrubbed
+    attributes:
+      label: Secret check
+      options:
+        - label: I have removed all secrets, API keys, passwords, tokens, and personal data from this log
+          required: true

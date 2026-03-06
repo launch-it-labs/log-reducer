@@ -239,6 +239,29 @@ After implementing code changes based on findings, you **must** re-run the full 
 
 Do not consider the task complete until this verification loop passes. Low-generality findings may be skipped with the user's approval.
 
+### Step 6 — Create a PR (if improvements were made)
+
+If you implemented any code changes from the evaluation:
+
+1. **Create a test fixture** from the log sample:
+   - Pick the next available fixture number (e.g., `16-description/`)
+   - Copy `test/fixtures/tmp-eval/input.log` to `test/fixtures/NN-description/input.log`
+   - Run the pipeline to generate `expected.log` for the new fixture
+   - Register it in `test/runFixtures.ts`
+   - Verify with `npm test`
+
+2. **Create a branch and commit**:
+   - Branch name: `improve/short-description` (e.g., `improve/nginx-access-logs`)
+   - Commit message should summarize what patterns were added/improved
+   - Include the new test fixture in the commit
+
+3. **Push and create a PR** with:
+   - Summary of the log source and patterns found
+   - The eval stats (original tokens → actual tokens → ideal tokens)
+   - Which findings were addressed (High/Medium) and which were skipped (Low) with reasons
+
+This workflow means anyone can contribute by simply pasting a log — the AI handles the engineering, and the log becomes a permanent test fixture preventing regressions.
+
 ### Current transform pipeline (in order)
 
 1. `stripAnsi` — ANSI escape codes

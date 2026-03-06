@@ -204,7 +204,11 @@ npm run compile
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test, and add new transforms.
+**The easiest way to contribute is to paste a log file.** Open this project in Claude Code, paste a log into the chat, and the AI will analyze it, implement improvements for patterns it finds, and create a PR. No code knowledge required — your log becomes a test fixture that makes the pipeline better for everyone. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+You can also [submit a log via GitHub issue](https://github.com/imankha/log-reducer/issues/new?template=log-sample.yml) if you don't use Claude Code.
+
+For code contributions (new transforms, bug fixes), see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Design Decisions
 
