@@ -143,7 +143,10 @@ your hypothesis.
     reduce_log({ file: "f", tail: 200, grep: "timeout|connection" })            // regex search
     reduce_log({ file: "f", tail: 200, contains: "export_123" })                // literal string
     reduce_log({ file: "f", tail: 200, component: "database" })                 // filter by module
-    reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05" })             // time window
+
+    // time_range is AND — scopes the window, other filters select within it
+    reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05" })             // all lines in window
+    reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05", level: "error" })  // errors in window
 
     // Context control
     reduce_log({ file: "f", tail: 200, level: "error", context: 10 })           // 10 lines each side
@@ -216,7 +219,7 @@ The tool applies 18 transforms in sequence:
 4. **Shorten URLs** — strip query params, collapse long paths
 5. **Simplify timestamps** — `2024-01-15T14:32:01.123Z` → `14:32:01`
 6. **Strip envelope** — remove redundant log envelope prefixes
-7. **Filter noise** — remove DEBUG/TRACE, health checks, heartbeats, devtools artifacts
+7. **Filter noise** — remove health checks, heartbeats, devtools artifacts (DEBUG/TRACE kept for causal-chain analysis)
 8. **Strip source locations** — browser console `file.js:line` prefixes
 9. **Collapse pip output** — summarize pip install runs
 10. **Collapse Docker layers** — summarize Docker layer push/export lines
@@ -231,7 +234,7 @@ The tool applies 18 transforms in sequence:
 
 ## Filter Parameters
 
-All filters are optional. Inclusion filters combine via OR — any line matching any active filter is included. `not_grep` is applied as a post-filter exclusion.
+All filters are optional. Inclusion filters (`level`, `grep`, `contains`, `component`) combine via OR — any line matching any active filter is included. `time_range` is an AND scope — it restricts the window, then inclusion filters select within it. `not_grep` is applied as a post-filter exclusion.
 
 ### Input control
 
@@ -256,7 +259,12 @@ All filters are optional. Inclusion filters combine via OR — any line matching
 | `grep` | string | Regex pattern to match lines (case-insensitive) |
 | `contains` | string | Literal substring to match lines |
 | `component` | string | Filter by logger/module name (case-insensitive substring) |
-| `time_range` | string | Time window, e.g. `"13:02-13:05"` or `"13:02:30-13:02:45"`. Use timestamps from a prior `summary` call |
+
+### Scoping filter (AND with inclusion filters)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `time_range` | string | Time window, e.g. `"13:02-13:05"` or `"13:02:30-13:02:45"`. Restricts to lines within the window. When combined with inclusion filters, only lines matching both the time window AND an inclusion filter are shown. When used alone, all lines in the window are included. Use timestamps from a prior `summary` call |
 
 ### Exclusion filter
 

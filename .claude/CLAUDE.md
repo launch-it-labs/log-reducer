@@ -65,7 +65,10 @@ reduce_log({ file: "app.log", tail: 200, level: "warning" })                    
 reduce_log({ file: "app.log", tail: 200, grep: "timeout|connection" })            // Regex search
 reduce_log({ file: "app.log", tail: 200, contains: "export_123" })                // Literal string search
 reduce_log({ file: "app.log", tail: 200, component: "database" })                 // Filter by logger/module
-reduce_log({ file: "app.log", tail: 500, time_range: "13:02-13:05" })             // Time window
+
+// time_range is an AND scope — it restricts the window, then other filters select within it
+reduce_log({ file: "app.log", tail: 500, time_range: "13:02-13:05" })             // All lines in window
+reduce_log({ file: "app.log", tail: 500, time_range: "13:02-13:05", level: "error" })  // Errors within window
 
 // Context control
 reduce_log({ file: "app.log", tail: 200, level: "error", context: 10 })           // 10 lines before AND after
@@ -251,7 +254,10 @@ hypothesis.
     reduce_log({ file: "f", tail: 200, grep: "timeout|connection" })            // regex search
     reduce_log({ file: "f", tail: 200, contains: "export_123" })                // literal string
     reduce_log({ file: "f", tail: 200, component: "database" })                 // filter by module
-    reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05" })             // time window
+
+    // time_range is AND — scopes the window, other filters select within it
+    reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05" })             // all lines in window
+    reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05", level: "error" })  // errors in window
 
     // Context control
     reduce_log({ file: "f", tail: 200, level: "error", context: 10 })           // 10 lines each side
@@ -386,7 +392,7 @@ This workflow means anyone can contribute by simply pasting a log — the AI han
 3. `shortenIds` — UUIDs, hex strings, JWTs, generated IDs -> `$1`, `$2`, ...
 4. `shortenUrls` — strip query params, collapse long path segments
 5. `simplifyTimestamps` — shorten verbose timestamp formats
-6. `filterNoise` — remove DEBUG lines, health checks, heartbeats, devtools noise, progress bars, Docker boilerplate, pip upgrade notices
+6. `filterNoise` — remove health checks, heartbeats, devtools noise, progress bars, Docker boilerplate, pip upgrade notices (DEBUG/TRACE kept — AI uses `level` filter to exclude)
 7. `stripSourceLocations` — browser console `file.js:line` prefixes
 8. `collapsePipOutput` — summarize pip Collecting/Downloading runs into compact package lists, strip elapsed-time prefixes
 9. `collapseDockerLayers` — collapse runs of Docker layer push/export lines into a count with time range

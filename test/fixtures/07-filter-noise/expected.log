@@ -1,10 +1,16 @@
 INFO: Application starting
-[... 3 lines omitted ...]
+DEBUG: Loading module auth
+DEBUG: Loading module database
+DEBUG: Loading module cache
 INFO: All modules loaded
-[... 3 lines omitted ...]
-INFO: Processing user request
+DEBUG: Checking connection pool
 [... 2 lines omitted ...]
+INFO: Processing user request
+DEBUG: Validating input
+TRACE: Raw input bytes: [72, 65, 6c, 6c, 6f]
 INFO: Request processed successfully
-[... 4 lines omitted ...]
+[... 3 lines omitted ...]
+DEBUG: Cache hit for key user:123
 INFO: User logged in
+DEBUG: Session created
 WARN: Slow query detected (2.5s)
