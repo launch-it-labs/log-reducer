@@ -38,8 +38,20 @@ export interface FocusOptions {
   contains?: string;
   /** Lines of context to show around matched lines (default 3). */
   context?: number;
+  /** Lines of context to show BEFORE each match (overrides context for before-direction). */
+  before?: number;
+  /** Lines of context to show AFTER each match (overrides context for after-direction). */
+  after?: number;
   /** Filter to specific logger/component names (substring match, case-insensitive). */
   component?: string;
   /** Filter to a time range: "HH:MM-HH:MM" or "HH:MM:SS-HH:MM:SS". */
   time_range?: string;
+  /** Regex pattern — EXCLUDE lines matching this pattern (applied after inclusion filters). */
+  not_grep?: string;
+  /** Max number of matched sections to return. E.g., limit=5 returns first 5 matches. */
+  limit?: number;
+  /** Skip first N matched sections before applying limit. For pagination: skip=3, limit=2 = matches 4-5. */
+  skip?: number;
+  /** Return a structural summary instead of filtered content. Shows error/warn counts, timestamps, components. */
+  summary?: boolean;
 }

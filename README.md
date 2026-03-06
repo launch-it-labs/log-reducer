@@ -2,7 +2,7 @@
 
 Your AI coding agent is spending thousands of tokens reading raw logs — DEBUG spam, health checks, duplicate lines, framework stack frames, UUIDs. Those tokens are gone for the rest of the session. The agent has less room to think, generates worse code, and hits its context limit faster.
 
-Log Reducer sits between the log and the AI. It compresses the file down to just the signal — errors, warnings, state changes, unique events — typically cutting 70-90% of tokens. The raw log never enters the AI's context.
+Log Reducer sits between the log and the AI. It reduces the file down to just the signal — errors, warnings, state changes, unique events — typically cutting 70-90% of tokens. The raw log never enters the AI's context.
 
 It runs as an **MCP server** (the AI calls `reduce_log` with a file path) or as a **CLI** (pipe any log through it). No API keys, no network calls — deterministic text transforms that run instantly.
 
@@ -115,7 +115,7 @@ Open your project in Claude Code and say:
 
 Claude Code will register the MCP server, add the right instructions to your CLAUDE.md, and set up the `/logdump` slash command. You can verify it worked by asking: *"What MCP tools do you have?"* — it should list `reduce_log`.
 
-That's it. Your AI agent now compresses logs automatically instead of reading them raw.
+That's it. Your AI agent now reduces logs automatically instead of reading them raw.
 
 <details>
 <summary>Manual setup (if you prefer)</summary>
@@ -150,6 +150,54 @@ node out/src/cli.js --level error --context 10 < app.log
 
 After `npm link`, the `logreducer` command is available globally.
 
+## Multi-turn investigation
+
+The tool isn't just a one-shot reducer. It supports a **funnel pattern** that lets an AI agent investigate a large log file in multiple targeted passes — spending ~1,000 tokens total instead of 5,000+ from a blind dump.
+
+### The problem with one-shot log reading
+
+When an AI reads a 2,000-line log file, two bad things happen:
+1. **Most of the tokens are noise.** Even after reduction, a full dump includes context the agent doesn't need yet.
+2. **The tokens are permanent.** Once in context, they can't be reclaimed. If the agent later realizes it needed different information, those tokens are wasted.
+
+### The funnel: survey, scan, zoom, trace
+
+Each step is informed by the previous one. The agent only loads what it needs.
+
+```
+Step 1: SURVEY → summary: true                              ~50 tokens
+  "8 errors between 13:02-13:15, components: db, auth, api"
+
+Step 2: SCAN   → level: "error", limit: 3                   ~200 tokens
+  See first 3 errors with context. Note timestamps.
+
+Step 3: ZOOM   → time_range: "13:02:28-13:02:35", before: 50  ~500 tokens
+  50 lines leading up to the first error — the causal chain.
+
+Step 4: TRACE  → grep: "pool|conn", time_range: "13:00-13:05",  ~300 tokens
+                  limit: 15, context: 0
+  Follow the connection pool thread. limit caps matches,
+  context: 0 avoids pulling in noise between them.
+```
+
+Total: ~1,050 tokens. The agent found the root cause (connection pool exhaustion from a batch job) without ever loading the full log.
+
+### Key parameters for investigation
+
+| Parameter | What it does | When to use it |
+|-----------|-------------|----------------|
+| `summary` | Structural overview: line count, time span, error counts, components | **Always first** for logs >100 lines |
+| `limit` / `skip` | Pagination — `limit: 5` returns first 5 matches, `skip: 5, limit: 5` returns matches 6-10 | Scanning errors without loading all of them |
+| `before` / `after` | Asymmetric context — `before: 50, after: 5` shows 50 lines *before* a match | Finding what *caused* an error |
+| `time_range` | Filter to a time window using timestamps from a prior query | Zooming into a specific incident |
+| `not_grep` | Exclude lines matching a pattern, even if they match an inclusion filter | Removing known noise (health checks, heartbeats) |
+| `head` | First N lines only | Startup/config logs at the top of a file |
+| `reduce: false` | Skip reduction, return raw lines (filters still applied) | When you need exact original text (commands, config values, error messages) |
+
+Every response includes a token count header — e.g., `[150 tokens (raw input: 2000 tokens)]` — so the agent can judge whether the reduced output is sufficient or worth re-querying unreduced.
+
+These compose with the existing filters (`level`, `grep`, `contains`, `component`, `context`, `tail`). All filters combine via OR for inclusion, with `not_grep` applied as a post-filter exclusion.
+
 ## What it does to your logs
 
 Biggest impact first:
@@ -157,7 +205,7 @@ Biggest impact first:
 - **Noise filtered** — DEBUG/TRACE lines, health checks, heartbeats, progress bars removed entirely
 - **Stack traces folded** — 80 frames → your code frames + `[... N framework frames omitted ...]`
 - **Repeated lines collapsed** — 6 similar lines → one template with varying values listed
-- **Log prefixes compressed** — 8 lines sharing `timestamp - module - LEVEL` → 1 header + indented messages
+- **Log prefixes factored** — 8 lines sharing `timestamp - module - LEVEL` → 1 header + indented messages
 - **Repeating blocks detected** — 5 identical 3-line blocks → 1 block + count
 - **IDs shortened** — UUIDs, hex strings, JWTs, tokens → `$1`, `$2`, ...
 - **Timestamps simplified** — `2024-01-15T14:32:01.123Z` → `14:32:01`
@@ -201,10 +249,10 @@ For code contributions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Design Decisions
 
 - **Rule-based, no AI** — zero API calls, works offline, deterministic. You get the same output every time, and it runs in milliseconds.
-- **File-path workflow** — the MCP tool accepts file paths so raw logs never enter the AI's context. Only compressed output crosses into the conversation.
+- **File-path workflow** — the MCP tool accepts file paths so raw logs never enter the AI's context. Only reduced output crosses into the conversation.
 - **Token reduction over line reduction** — stats reported in tokens, not lines, since that's what matters for AI context windows.
 - **Generality over coverage** — new transforms are scored by how broadly they apply. A pattern that only helps one application's logs gets flagged as bias risk and skipped, even if it would improve that specific case.
-- **Transform order matters** — IDs and timestamps are shortened before dedup so lines differing only by those values become identical. Noise is filtered before prefix compression so separator lines don't break grouping.
+- **Transform order matters** — IDs and timestamps are shortened before dedup so lines differing only by those values become identical. Noise is filtered before prefix factoring so separator lines don't break grouping.
 - **Each transform is independent** — pure function in, string out. Easy to add, test, and reorder without touching the rest of the pipeline.
 - **No ID legend** — replaced IDs get `$1`, `$2` placeholders with no mapping back. The original UUIDs are almost never what you're debugging.
 - **Minimal dependencies** — pure TypeScript, one runtime dependency (`@modelcontextprotocol/sdk`).
