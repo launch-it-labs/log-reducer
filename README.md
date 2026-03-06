@@ -152,14 +152,16 @@ After `npm link`, the `logreducer` command is available globally.
 
 ## What it does to your logs
 
-- **Noise lines removed** — DEBUG/TRACE, health checks, heartbeats, progress bars, Docker boilerplate
+Biggest impact first:
+
+- **Noise filtered** — DEBUG/TRACE lines, health checks, heartbeats, progress bars removed entirely
+- **Stack traces folded** — 80 frames → your code frames + `[... N framework frames omitted ...]`
+- **Repeated lines collapsed** — 6 similar lines → one template with varying values listed
+- **Log prefixes compressed** — 8 lines sharing `timestamp - module - LEVEL` → 1 header + indented messages
+- **Repeating blocks detected** — 5 identical 3-line blocks → 1 block + count
 - **IDs shortened** — UUIDs, hex strings, JWTs, tokens → `$1`, `$2`, ...
 - **Timestamps simplified** — `2024-01-15T14:32:01.123Z` → `14:32:01`
-- **Repeated lines collapsed** — 6 similar lines → one template with varying values listed
-- **Repeating blocks detected** — 5 identical 3-line blocks → 1 block + count
-- **Stack traces folded** — 80 frames → your code frames + `[... N framework frames omitted ...]`
-- **Log prefixes compressed** — 8 lines sharing `timestamp - module - LEVEL` → 1 header + indented messages
-- **Scattered duplicates merged**, **retry blocks collapsed**, **access logs compacted**
+- **Domain-specific** — pip installs, Docker layers, HTTP access logs, retry blocks, log envelopes each have dedicated collapsers
 
 18 transforms, applied in sequence. Rule-based, deterministic, runs offline. One dependency (`@modelcontextprotocol/sdk`).
 
@@ -198,12 +200,14 @@ For code contributions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Design Decisions
 
+- **Rule-based, no AI** — zero API calls, works offline, deterministic. You get the same output every time, and it runs in milliseconds.
+- **File-path workflow** — the MCP tool accepts file paths so raw logs never enter the AI's context. Only compressed output crosses into the conversation.
 - **Token reduction over line reduction** — stats reported in tokens, not lines, since that's what matters for AI context windows.
-- **No ID legend** — replaced IDs get `$1`, `$2` placeholders. The original values are almost never relevant when debugging with an AI.
-- **File-path workflow** — the MCP tool accepts file paths so raw logs never enter context.
-- **Transform order matters** — IDs shortened before dedup so lines differing only by ID become identical. Noise filtered before prefix compression so separators don't break grouping.
-- **Rule-based, no AI** — zero API calls, works offline, deterministic output.
-- **Minimal dependencies** — pure TypeScript, one runtime dependency.
+- **Generality over coverage** — new transforms are scored by how broadly they apply. A pattern that only helps one application's logs gets flagged as bias risk and skipped, even if it would improve that specific case.
+- **Transform order matters** — IDs and timestamps are shortened before dedup so lines differing only by those values become identical. Noise is filtered before prefix compression so separator lines don't break grouping.
+- **Each transform is independent** — pure function in, string out. Easy to add, test, and reorder without touching the rest of the pipeline.
+- **No ID legend** — replaced IDs get `$1`, `$2` placeholders with no mapping back. The original UUIDs are almost never what you're debugging.
+- **Minimal dependencies** — pure TypeScript, one runtime dependency (`@modelcontextprotocol/sdk`).
 
 ## License
 
