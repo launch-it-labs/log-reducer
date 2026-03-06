@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Evaluation CLI: runs the log compressor pipeline step-by-step,
+ * Evaluation CLI: runs the log reducer pipeline step-by-step,
  * records metrics after each transform, and prints a diagnostic table.
  *
  * Usage:
