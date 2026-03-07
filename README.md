@@ -6,78 +6,58 @@ Log Reducer sits between the log and the AI. It reduces the file down to just th
 
 It runs as an **MCP server** (the AI calls `reduce_log` with a file path) or as a **CLI** (pipe any log through it). No API keys, no network calls — deterministic text transforms that run instantly.
 
-## Example: finding a bug in 2,604 lines
+## Example
 
-A batch job is leaking database connections. The pool fills up, every API request
-starts failing with 503s. The root cause is one line buried among 2,604.
-
-The AI doesn't read the log. It interrogates it:
+You're running your FastAPI dev server. You click around, hit a 500 error, and copy
+the terminal output into a file. It's 218 lines — mostly a wall of framework stack traces:
 
 ```
-STEP 1 — SURVEY (96 tokens)
-reduce_log({ file: "app.log", summary: true })
-
-  SUMMARY (2,604 lines)
-  Time: 09:00:00 — 09:49:39
-  ERROR: 152 (09:47:30 — 09:48:59)       <-- all errors in a 90-second window
-  WARN:    3 (09:47:00 — 09:47:20)       <-- warnings right before
-  Components: app.api, app.batch, app.db
-
-STEP 2 — SCAN (551 tokens)
-reduce_log({ file: "app.log", level: "error", limit: 5, context: 3 })
-
-  WARN [app.db] pool near capacity (active=45, 48, 49)
-  ERROR [app.db] pool exhausted (active=50, idle=0)
-  ERROR [app.api] GET /api/users failed: ConnectionPoolExhausted
-  ERROR [app.api] GET /api/orders failed: ConnectionPoolExhausted
-  ...81 total errors, showing first 5
-
-STEP 3 — ZOOM (1,350 tokens)
-reduce_log({ file: "app.log", time_range: "09:47:25-09:48:10", before: 30 })
-
-  Acquiring connection (active=26, idle=24)     ← pool filling up
-  [app.batch] Processing record 17/2000
-  Acquiring connection (active=27, idle=23)
-  [app.batch] Processing record 18/2000
-  ...
-  Acquiring connection (active=39, idle=11)
-  [app.batch] Processing record 30/2000
-  WARN pool near capacity (active=45)
-  ERROR pool exhausted (active=50, idle=0)
-  ...cascade of 503s...
-  INFO [app.batch] Export batch still running    ← THE CLUE
-    (processed 45/2000, connections held: 30)
-
-STEP 4 — TRACE (186 tokens)
-reduce_log({ file: "app.log", grep: "active=|idle=|batch|held",
-             time_range: "09:45-09:48:30", limit: 15, context: 0 })
-
-  Acquiring connection (active=11, idle=39)     ← staircase pattern
-  Acquiring connection (active=12, idle=38)        one connection per record
-  ...                                              never released
-  Acquiring connection (active=25, idle=25)
+218 lines, 1185 tokens  →  51 lines, 310 tokens  (74% reduction)
 ```
 
-**Four calls. 2,183 tokens. Root cause found.** The batch job is eating one connection
-per record and never giving it back. The raw log never entered the conversation.
+Here's what the tool does to the stack trace. This is a real Python exception group
+with uvicorn, starlette, and FastAPI frames:
 
-([Full walkthrough with sequence diagram](docs/how-it-works.md))
-
-### Token cost comparison
-
+**Before** — 95 lines of stack trace, full `C:\Users\...\.venv\Lib\site-packages\` paths:
 ```
-                        Tokens    Context used
-                     ─────────────────────────
-Read raw log          25,600        100%        ← noise fills the context window
-reduce_log (one-shot) 16,500         64%        ← reduced, but untargeted
-Funnel (4 calls)       2,183          9%        ← only what the AI needed
-                     ─────────────────────────
-Tokens saved:         23,417                    ← free for reasoning & code
+    |   File "C:\Users\imank\projects\video-editor\src\backend\.venv\Lib\site-packages\
+             uvicorn\protocols\http\httptools_impl.py", line 426, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\imank\projects\video-editor\src\backend\.venv\Lib\site-packages\
+             uvicorn\middleware\proxy_headers.py", line 84, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ... 85 more framework lines ...
+    |   File "C:\Users\imank\projects\video-editor\src\backend\app\routers\exports.py",
+             line 745, in list_unacknowledged_exports
 ```
 
-Across [5 simulated production bugs](docs/how-it-works.md#across-5-simulated-bugs)
-(pool exhaustion, auth cascade, memory leak, deploy crash, race condition), the funnel
-pattern used **4% of raw tokens** while finding every root cause.
+**After** — your code preserved, framework collapsed, duplicate traceback gone:
+```
+    |   [... 10 framework frames (uvicorn, fastapi, starlette, contextlib) omitted ...]
+    |   File "app/middleware/db_sync.py", line 107, in dispatch
+    |     response = await call_next(request)
+    |   [... 6 framework frames (starlette, contextlib) omitted ...]
+    |   File "app/main.py", line 97, in dispatch
+    |     response = await call_next(request)
+    |   [... 16 framework frames (starlette, fastapi) omitted ...]
+    |   File "app/routers/exports.py", line 745, in list_unacknowledged_exports
+    |     exports=[
+    |   File "app/routers/exports.py", line 746, in <listcomp>
+    |     ExportJobResponse(
+    | pydantic_core._pydantic_core.ValidationError: 1 validation error for ExportJobResponse
+    | project_id
+    |   Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]
+
+Traceback (most recent call last):
+  [... duplicate traceback omitted ...]
+```
+
+The bug is clear: `exports.py:745` passes `project_id=None` to a Pydantic model that
+expects an int. Three framework frames, not 95. No `C:\Users\...\.venv\` paths.
+
+([Full before/after](docs/how-it-works.md)  |  [How the funnel pattern works for larger logs](docs/how-it-works.md#for-larger-logs))
 
 ## Setup
 
