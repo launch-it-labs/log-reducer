@@ -1,224 +1,165 @@
-# How it works: finding a bug in 2,604 lines of logs
+# How it works
 
-This is a real scenario from our simulation. A batch job is leaking database connections.
-The pool fills up, every API request starts failing with 503s, and the root cause is
-buried 2,500 lines deep. Here's how an AI agent finds it — and what it costs.
+A real example from development. You're running a FastAPI server locally,
+click around your app, hit a 500 error. You copy your terminal output into
+a file and ask your AI to debug it.
 
-## The setup
+## The problem
 
-```
-2,604 lines of application logs
-~25,600 tokens if read raw
-Bug: a nightly export batch is holding 30 DB connections and never releasing them
-```
-
-The log contains 45 minutes of normal traffic (health checks, DB queries, HTTP requests,
-cache operations, metrics), then the batch job starts, the pool fills, and everything
-breaks. The root cause — `Export batch still running (processed 45/2000, connections
-held: 30)` — is a single line among 2,604.
-
-## The conversation
+The terminal output is 218 lines. Most of it is a Python exception group
+with two copies of the full traceback — 95 lines of framework stack frames
+each, with paths like:
 
 ```
-┌─────────────────┐                    ┌──────────────────┐
-│    AI Agent      │                    │  reduce_log tool  │
-└────────┬────────┘                    └────────┬─────────┘
-         │                                      │
-         │  "The user says their API is          │
-         │   returning 503s. Let me check        │
-         │   the log."                           │
-         │                                      │
-         │                                      │
-   ──────┤  STEP 1: SURVEY                      │
-         │                                      │
-         │  reduce_log({                        │
-         │    file: "app.log",                  │
-         │    summary: true                     │
-         │  })                                  │
-         │ ────────────────────────────────────> │
-         │                                      │
-         │  SUMMARY (2604 lines)                │
-         │  Time span: 09:00:00 — 09:49:39      │
-         │  Levels:                              │
-         │    ERROR: 152 (09:47:30 — 09:48:59)  │
-         │    WARN:    3 (09:47:00 — 09:47:20)  │
-         │    INFO:  605 (09:00:00 — 09:48:05)  │
-         │  Components: app.api, app.batch,      │
-         │    app.db, app.cache, app.health      │
-         │ <──────────────────────────────────── │
-         │                                      │
-         │  96 tokens. The AI now knows:         │
-         │  - 152 errors starting at 09:47:30   │
-         │  - 3 warnings right before at 09:47  │
-         │  - There's a "batch" component       │
-         │                                      │
-         │                                      │
-   ──────┤  STEP 2: SCAN                        │
-         │                                      │
-         │  reduce_log({                        │
-         │    file: "app.log",                  │
-         │    level: "error",                   │
-         │    limit: 5, context: 3              │
-         │  })                                  │
-         │ ────────────────────────────────────> │
-         │                                      │
-         │  [showing 5 of 81 errors]             │
-         │                                      │
-         │  WARN [app.db] Connection pool near   │
-         │    capacity (active=45/48/49)         │
-         │  ERROR [app.db] Connection pool       │
-         │    exhausted (active=50, idle=0)      │
-         │  ERROR [app.api] GET /api/users/$551  │
-         │    failed: ConnectionPoolExhausted    │
-         │  ERROR [app.api] GET /api/orders/$552 │
-         │    failed: ConnectionPoolExhausted    │
-         │  ...                                  │
-         │ <──────────────────────────────────── │
-         │                                      │
-         │  551 tokens. The AI now knows:        │
-         │  - Pool went from 45 → 50 active     │
-         │  - Then every API call failed         │
-         │  - But WHY did the pool fill up?      │
-         │                                      │
-         │                                      │
-   ──────┤  STEP 3: ZOOM                        │
-         │                                      │
-         │  reduce_log({                        │
-         │    file: "app.log",                  │
-         │    time_range: "09:47:25-09:48:10",  │
-         │    before: 30                        │
-         │  })                                  │
-         │ ────────────────────────────────────> │
-         │                                      │
-         │  The 30 lines BEFORE the first error: │
-         │                                      │
-         │  Acquiring connection (active=26...)   │
-         │  [app.batch] Processing record 17...  │
-         │  Acquiring connection (active=27...)   │
-         │  [app.batch] Processing record 18...  │
-         │  ...                                  │
-         │  Acquiring connection (active=39...)   │
-         │  [app.batch] Processing record 30...  │
-         │  [100 export queries]                 │
-         │  WARN pool near capacity (45,48,49)   │
-         │  ERROR pool exhausted (50, idle=0)    │
-         │  ... cascade of 503s ...              │
-         │                                      │
-         │  *** THE CLUE ***                     │
-         │  INFO [app.batch] Export batch still   │
-         │    running (processed 45/2000,        │
-         │    connections held: 30)              │
-         │                                      │
-         │ <──────────────────────────────────── │
-         │                                      │
-         │  ~1,350 tokens. The AI sees the       │
-         │  batch job acquiring connections and   │
-         │  never releasing them. Hypothesis      │
-         │  forming.                             │
-         │                                      │
-         │                                      │
-   ──────┤  STEP 4: TRACE                       │
-         │                                      │
-         │  reduce_log({                        │
-         │    file: "app.log",                  │
-         │    grep: "active=|idle=|batch|held", │
-         │    time_range: "09:45-09:48:30",     │
-         │    limit: 15, context: 0             │
-         │  })                                  │
-         │ ────────────────────────────────────> │
-         │                                      │
-         │  Acquiring connection (active=11...)   │
-         │  Acquiring connection (active=12...)   │
-         │  ...                                  │
-         │  Acquiring connection (active=25...)   │
-         │                                      │
-         │  A perfect staircase: 11 → 12 → ...  │
-         │  → 25. The batch job is eating one    │
-         │  connection per record and never      │
-         │  giving it back.                      │
-         │ <──────────────────────────────────── │
-         │                                      │
-         │  186 tokens. Root cause confirmed.     │
-         │                                      │
-         ▼                                      ▼
+C:\Users\imank\projects\video-editor\src\backend\.venv\Lib\site-packages\
+  starlette\middleware\base.py
 ```
 
-## The AI's conclusion
+Your AI reads all 218 lines. That's 1,185 tokens of context gone — and
+the bug is in 3 lines buried at the bottom of the trace.
 
-> The nightly export batch job (started at 09:45:00) is leaking database connections.
-> It acquired 30 connections while processing records 1-30 of 2,000 and never released
-> them. Combined with the existing 20 active connections from normal traffic, this
-> exhausted the pool (50/50) at 09:47:30, causing all API requests to fail with 503.
->
-> Fix: the batch job needs to release connections after each record, or use a single
-> connection with a cursor.
+## What reduce_log does to it
 
-**Four calls. Root cause found. The raw log never entered the conversation.**
+**218 lines, 1,185 tokens  →  51 lines, 310 tokens  (74% reduction)**
 
-## What it cost
+Here's what happens, transform by transform:
 
+### Stack traces: 95 lines → 12 lines
+
+The exception has 95 lines of stack frames. Most are framework middleware
+(uvicorn, starlette, fastapi, contextlib). The tool:
+
+- **Folds consecutive framework frames** into a single summary
+- **Shortens paths** from `C:\Users\...\site-packages\starlette\routing.py` → `starlette/routing.py`
+- **Removes caret lines** (`^^^^^^`)
+- **Keeps your code** — the frames in `app/routers/exports.py`, `app/main.py`, `app/middleware/db_sync.py`
+
+Before:
 ```
-                          Tokens     % of raw    Signal-to-noise
-                       ─────────────────────────────────────────
-Without log reducer
-  AI reads full log      25,600      100%            4%
-                       ─────────────────────────────────────────
-With log reducer (one-shot)
-  reduce_log (no filters) 16,500      64%            4%
-                       ─────────────────────────────────────────
-With log reducer (funnel)
-  Step 1  SURVEY             96
-  Step 2  SCAN              551
-  Step 3  ZOOM            1,350
-  Step 4  TRACE             186
-                         ──────
-  Total                   2,183        9%           18%
-```
-
-The funnel pattern used **9% of the tokens** to find the same root cause, with
-**4.5x better signal concentration**. The other 91% of the context window is
-available for the AI to think, write code, and help you fix the bug.
-
-### Where the tokens go
-
-This is the part that makes the difference concrete. An AI context window is
-fixed — every token spent on logs is a token *not* spent on reasoning.
-
-```
-Without log reducer:                With log reducer:
-
-┌─────────────────────────┐        ┌─────────────────────────┐
-│                         │        │                         │
-│    25,600 tokens of     │        │   2,183 tokens of       │
-│    raw log (mostly      │        │   targeted signal       │
-│    noise — health       │        │                         │
-│    checks, debug spam,  │        ├─────────────────────────┤
-│    cache ops, access    │        │                         │
-│    logs, metrics...)    │        │   23,417 tokens free    │
-│                         │        │   for reasoning, code   │
-│                         │        │   generation, and       │
-│                         │        │   conversation          │
-│                         │        │                         │
-│                         │        │                         │
-│                         │        │                         │
-│                         │        │                         │
-│                         │        │                         │
-└─────────────────────────┘        └─────────────────────────┘
- Context window                     Context window
- (nearly full with noise)           (91% free for real work)
+    |   File "C:\Users\imank\projects\video-editor\src\backend\.venv\Lib\
+             site-packages\uvicorn\protocols\http\httptools_impl.py", line 426, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\imank\projects\video-editor\src\backend\.venv\Lib\
+             site-packages\uvicorn\middleware\proxy_headers.py", line 84, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\imank\projects\video-editor\src\backend\.venv\Lib\
+             site-packages\fastapi\applications.py", line 1135, in __call__
+    |     await super().__call__(scope, receive, send)
+    ... 30 more framework frames with full paths ...
+    |   File "C:\Users\imank\projects\video-editor\src\backend\app\routers\
+             exports.py", line 745, in list_unacknowledged_exports
 ```
 
-Those 23,400 freed tokens are roughly:
+After:
+```
+    |   [... 10 framework frames (uvicorn, fastapi, starlette, contextlib) omitted ...]
+    |   File "app/middleware/db_sync.py", line 107, in dispatch
+    |     response = await call_next(request)
+    |   [... 6 framework frames (starlette, contextlib) omitted ...]
+    |   File "app/main.py", line 97, in dispatch
+    |     response = await call_next(request)
+    |   [... 16 framework frames (starlette, fastapi) omitted ...]
+    |   File "app/routers/exports.py", line 745, in list_unacknowledged_exports
+```
 
-- **15-20 more back-and-forth exchanges** with the user
-- **~600 lines of generated code** the AI can write
-- **The difference** between the AI solving the problem in this session
-  vs. running out of context and losing its train of thought
+### Duplicate traceback: gone
 
-### Across 5 simulated bugs
+Python exception groups often produce the same traceback twice (the
+original + "The above exception was the direct cause..."). The second
+copy becomes one line:
 
-We ran this against 5 different production bug scenarios (pool exhaustion, auth
-cascade, memory leak, deployment crash, race condition):
+```
+Traceback (most recent call last):
+  [... duplicate traceback omitted ...]
+```
+
+### HTTP access log lines: cleaned up
+
+```
+INFO:     127.0.0.1:58756 - "GET /api/settings HTTP/1.1" 200 OK
+```
+becomes:
+```
+GET /api/settings → 200
+```
+
+### Repeated API calls: collapsed
+
+When the same endpoint appears multiple times with different ports:
+```
+INFO:     127.0.0.1:58764 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56487 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55169 - "GET /api/projects HTTP/1.1" 200 OK
+```
+becomes:
+```
+GET /api/projects → 200
+[... above line repeated 3 more times ...]
+```
+
+### Log prefixes: factored
+
+Lines sharing the same timestamp get factored:
+```
+2026-02-23 18:35:54 - app.main - INFO - Default user 'a' session initialized
+2026-02-23 18:35:54 - app.main - INFO - Orphaned export jobs recovery complete
+2026-02-23 18:35:54 - app.services.modal_queue - INFO - [ModalQueue] Processing queue with local FFmpeg
+2026-02-23 18:35:54 - app.main - INFO - Modal queue: no pending tasks found
+```
+becomes:
+```
+18:35:54 - app.main - INFO - Default user 'a' session initialized
+  app.main - INFO - Orphaned export jobs recovery complete
+  app.services.modal_queue - INFO - [ModalQueue] Processing queue with local FFmpeg
+  app.main - INFO - Modal queue: no pending tasks found
+```
+
+## The token math
+
+```
+                     Tokens
+                   ─────────
+Raw log              1,185     ← what the AI reads without the tool
+After reduce_log       310     ← what the AI reads with the tool
+                   ─────────
+Saved                  875     ← free for reasoning and code
+```
+
+875 tokens doesn't sound dramatic — but this was a short session (30 seconds
+of clicking). In a real debugging session, logs grow fast. A few minutes of
+debug-level logging from a Next.js or Django dev server easily produces
+500+ lines. Test suite output can be thousands of lines. Docker Compose
+starting 5 services? A CI build log? These scale up quickly — and the
+reduction % stays the same or gets better (more repetition = more dedup).
+
+## For larger logs
+
+When a log file grows past a few hundred lines, you don't want to load
+even the *reduced* version all at once. The tool supports a **funnel
+pattern** — multiple targeted calls that let the AI drill in:
+
+```
+Step 1: SURVEY  → summary: true                               ~50 tokens
+  "8 errors between 13:02-13:15, components: db, auth, api"
+
+Step 2: SCAN    → level: "error", limit: 3, context: 3       ~200 tokens
+  See first 3 errors with surrounding context.
+
+Step 3: ZOOM    → time_range: "13:02:28-13:02:35", before: 50 ~500 tokens
+  50 lines leading up to the first error — the causal chain.
+
+Step 4: TRACE   → grep: "pool|conn", time_range: "13:00-13:05" ~300 tokens
+  Follow a specific thread through the log.
+```
+
+Total: ~1,050 tokens for a 2,600-line log. The AI finds the root cause
+without ever loading the full file.
+
+We [simulated this](../test/simulation/sim.ts) against 5 different bug
+scenarios (pool exhaustion, auth cascade, memory leak, deploy crash,
+race condition) with logs of 2,000-3,000 lines each:
 
 ```
                        Tokens     vs. raw
@@ -228,10 +169,10 @@ Naive reduce_log      69,287     -41%
 Funnel pattern         5,038     -96%
 ```
 
-The funnel pattern found every root cause while using **4.3% of raw tokens**.
-It concentrated bug-relevant signal **16x** compared to reading the raw log.
+The funnel pattern found every root cause while using 4% of raw tokens.
 
 ---
 
-*These numbers come from `test/simulation/sim.ts`. Run `node out/test/simulation/sim.js`
-to reproduce.*
+*Stack trace example from `test/fixtures/10-real-world-python/`.
+Simulation numbers from `test/simulation/sim.ts` — run
+`node out/test/simulation/sim.js` to reproduce.*
