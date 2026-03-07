@@ -102,6 +102,10 @@ Optionally copy `.claude/commands/logdump.md` into your project for a `/logdump`
 See [docs/agent-integration.md](docs/agent-integration.md) for the full guide — filter reference, chaining with other MCPs, and setup for Codex/Copilot.
 </details>
 
+### Sharing logs
+
+Copy a log to your clipboard, then type `/logdump` in the chat. The raw log is saved to a temp file and reduced automatically — it never enters the AI's context. This is the recommended way to share logs.
+
 ### CLI (for scripts and piping)
 
 ```bash
