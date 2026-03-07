@@ -1,6 +1,20 @@
 # How it works
 
-A real example from development. You're running a FastAPI server locally,
+## Sharing logs with your AI
+
+**Want to share a log? Type `/logdump` in the chat.**
+
+Copy the log to your clipboard, then type `/logdump`. This dumps the clipboard
+to a temp file and runs `reduce_log` on it automatically — the raw log never
+enters the conversation. It's the fastest way to get a log analyzed.
+
+Don't paste logs directly into the chat. Once raw text enters the AI's context,
+the tokens are spent — the tool can't reclaim them. `/logdump` keeps the raw
+log out and only sends the reduced version.
+
+## A real example
+
+You're running a FastAPI server locally,
 click around your app, hit a 500 error. You copy your terminal output into
 a file and ask your AI to debug it.
 
