@@ -14,6 +14,8 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -205,10 +207,15 @@ function resolveLogText(args: ReduceArgs): string {
   let text: string;
 
   if (args.file) {
+    // Resolve /tmp/ to the OS temp directory on Windows (where /tmp doesn't exist)
+    let filePath = args.file;
+    if (process.platform === 'win32' && /^\/tmp(\/|\\)/.test(filePath)) {
+      filePath = path.join(os.tmpdir(), filePath.slice(4));
+    }
     try {
-      text = fs.readFileSync(args.file, 'utf-8');
+      text = fs.readFileSync(filePath, 'utf-8');
     } catch (err: any) {
-      throw new Error(`Cannot read file "${args.file}": ${err.message}`);
+      throw new Error(`Cannot read file "${filePath}": ${err.message}`);
     }
   } else if (args.log_text) {
     text = args.log_text;
