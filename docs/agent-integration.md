@@ -39,136 +39,46 @@ Replace the path with the actual location on your machine, e.g.:
 Add the following to your project's `.claude/CLAUDE.md` so the AI knows how and when to use the tool:
 
 ```markdown
-## Log handling — IMPORTANT: read this before touching any log file
+## Log handling
 
-You have access to the `reduce_log` MCP tool. You MUST use it instead of reading log
-files directly. This section explains why this is critical to your own performance, and
-how to use it.
-
-### Why this directly affects the quality of your work
-
-Your context window is fixed for this entire session. Every token you spend on raw log
-text is a token you cannot spend on reasoning, code generation, or helping the user.
-This is not an abstract concern — it concretely degrades your performance:
-
-- **You become dumber.** As your context fills with verbose log noise (DEBUG spam, health
-  checks, duplicate lines, framework stack frames), you have less room to think. Your
-  ability to reason about code, hold complex plans in working memory, and generate correct
-  solutions measurably declines.
-- **You lose stamina.** A session that could handle 20 back-and-forth exchanges gets cut
-  to 5 because a single raw log dump consumed 15,000 tokens of irreplaceable context.
-- **You miss what matters.** A 500-line raw log is mostly noise. The 8 lines that actually
-  matter are buried. `reduce_log` extracts those 8 lines and throws away the other 492.
-
-Concrete numbers: a 500-line error log costs ~5,000 tokens raw. After `reduce_log`, the
-same semantic content is ~500 tokens — a 90% reduction. That's 4,500 tokens you keep for
-doing useful work. Over a session with multiple log reads, this compounds dramatically.
-
-**This is not optional.** Reading raw logs is the single most wasteful thing you can do
-with your context window. The `reduce_log` tool exists specifically to prevent this.
-
-### How to use reduce_log — the funnel pattern
-
-**Do NOT dump the whole log. Investigate step by step.** Each call's output enters your
-context permanently, so every query should fetch NEW information informed by the last.
-
-**Step 1: SURVEY** — get the structural overview (~50 tokens)
-
-    reduce_log({ file: "/path/to/app.log", tail: 2000, summary: true })
-
-Returns: total lines, time span, error/warn/info/debug counts with first/last timestamps,
-error locations as timestamps, and components found. Use this to plan your next query.
-
-**Step 2: SCAN** — see the first few errors (~200 tokens)
-
-    reduce_log({ file: "/path/to/app.log", tail: 2000, level: "error", limit: 5 })
-
-Returns first 5 errors with context. Output header says "[showing matches 1-5 of 23 total]"
-so you know how many remain. Note the timestamps of interesting errors for Step 3.
-
-**Step 3: ZOOM** — deep context around a specific error (~500 tokens)
-
-    reduce_log({ file: "/path/to/app.log", tail: 2000, time_range: "13:02:30-13:02:45", before: 50, after: 5 })
-
-Use a timestamp from Step 2. `before: 50` shows the 50 lines leading up to the error —
-the causal chain. This is where you find root causes.
-
-**Step 4: TRACE** — follow a specific thread (~300 tokens)
-
-    reduce_log({ file: "/path/to/app.log", tail: 2000, grep: "pool|connection", time_range: "13:00-13:05", limit: 15, context: 0 })
-
-Combine grep with time_range to trace a concept through a time window. Use `limit` to cap
-matches and `context: 0` to avoid pulling in cascading errors between matches. Confirms
-your hypothesis.
-
-**For command output** — redirect to file first, then use the funnel:
-
-    npm test 2>&1 > /tmp/test-output.log
-    reduce_log({ file: "/tmp/test-output.log", tail: 2000, summary: true })
+You have access to the `reduce_log` MCP tool. Use it instead of reading log files directly
+— it cuts 70-90% of tokens while preserving all errors, warnings, and meaningful events.
 
 ### Rules
 
-1. **NEVER read raw log files** — use `reduce_log` with a `file` parameter instead of
-   the Read tool, cat, head, or tail. Every time you read a log raw, you are making
-   yourself worse at your job for the rest of the session.
+1. **Use `reduce_log` instead of Read/cat/head/tail for any log file.**
+   ```
+   reduce_log({ file: "app.log", tail: 200, level: "error" })
+   ```
+2. **Use `grep` or `level` to filter.** Don't load the whole log when you only need errors.
+3. **Redirect verbose command output to a file first**, then reduce it:
+   ```
+   npm test 2>&1 > /tmp/test.log
+   reduce_log({ file: "/tmp/test.log", tail: 200, level: "error" })
+   ```
+4. **Never ask users to paste logs into chat.** Tell them to type `/logdump` or give a file path.
+5. **Always include `tail`** (200-2000) to cap input size.
 
-2. **NEVER ask users to paste log output into chat.** Direct them to save it to a file
-   and give you the path, or use the `/logdump` slash command. If they paste anyway, the
-   damage is done — remind them for next time.
+### Useful filters
 
-3. **Always include `tail`** (default 200-2000 depending on file size) to cap input size.
+    reduce_log({ file: "f", tail: 200, level: "error" })              // errors only
+    reduce_log({ file: "f", tail: 200, grep: "timeout|connection" })  // regex search
+    reduce_log({ file: "f", tail: 200, contains: "export_123" })      // literal string
+    reduce_log({ file: "f", tail: 200, component: "database" })       // filter by module
+    reduce_log({ file: "f", tail: 2000, summary: true })              // structural overview (~50 tokens)
 
-4. **Start with `summary: true`** for any log >100 lines. It costs ~50 tokens and tells
-   you exactly where to look. Skipping the survey and guessing wastes tokens.
+### Advanced: the funnel pattern
 
-5. **Always use `limit`** on SCAN and TRACE queries (5-15 matches). Without a limit,
-   cascading errors can flood your context. You can always paginate with `skip` if you
-   need more. For TRACE, also use `context: 0` to avoid pulling in noise between matches.
+For large logs (500+ lines), investigate in steps instead of loading everything at once:
 
-6. **Each follow-up should fetch NEW data.** Once data enters context, it's paid for.
-   Don't re-request overlapping time ranges or re-filter what you already have. Narrow
-   your queries using timestamps from previous results.
+1. **SURVEY**: `summary: true` → get error counts, timestamps, components (~50 tokens)
+2. **SCAN**: `level: "error", limit: 5` → see first 5 errors (~200 tokens)
+3. **ZOOM**: `time_range: "13:02:30-13:02:45", before: 50` → context around a specific error (~500 tokens)
+4. **TRACE**: `grep: "pool|conn", time_range: "13:00-13:05", limit: 15` → follow a thread (~300 tokens)
 
-7. **Redirect all verbose output to a temp file first.** This applies to shell commands,
-   test runners, build tools, and any MCP tool that produces more than ~20 lines of output.
-
-### Filter reference
-
-    // Structural overview (ALWAYS start here for large logs)
-    reduce_log({ file: "f", tail: 2000, summary: true })
-
-    // Inclusion filters (combine via OR)
-    reduce_log({ file: "f", tail: 200, level: "error" })                        // errors only
-    reduce_log({ file: "f", tail: 200, level: "warning" })                      // warnings and above
-    reduce_log({ file: "f", tail: 200, grep: "timeout|connection" })            // regex search
-    reduce_log({ file: "f", tail: 200, contains: "export_123" })                // literal string
-    reduce_log({ file: "f", tail: 200, component: "database" })                 // filter by module
-
-    // time_range is AND — scopes the window, other filters select within it
-    reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05" })             // all lines in window
-    reduce_log({ file: "f", tail: 500, time_range: "13:02-13:05", level: "error" })  // errors in window
-
-    // Context control
-    reduce_log({ file: "f", tail: 200, level: "error", context: 10 })           // 10 lines each side
-    reduce_log({ file: "f", tail: 200, level: "error", before: 50, after: 5 })  // asymmetric context
-
-    // Pagination (navigate through matches without loading them all)
-    reduce_log({ file: "f", tail: 200, level: "error", limit: 5 })              // first 5 errors
-    reduce_log({ file: "f", tail: 200, level: "error", limit: 5, skip: 5 })     // errors 6-10
-
-    // Exclusion (remove known noise from results)
-    reduce_log({ file: "f", tail: 200, level: "error", not_grep: "health.check|heartbeat" })
-
-    // Unreduced output (when you need exact original text)
-    reduce_log({ file: "f", tail: 200, level: "error", reduce: false })         // raw lines, filters still applied
-
-    // Line capping
-    reduce_log({ file: "f", head: 100 })                                        // first 100 lines (startup)
-    reduce_log({ file: "f", tail: 200 })                                        // full reduced output
-
-Every response includes a token count header: `[150 tokens (raw input: 2000 tokens)]`.
-Use this to judge if reduction is sufficient. Re-query with `reduce: false` only when
-you need exact original wording (commands, config values, unparameterized error messages).
+Total: ~1000 tokens instead of 5000+ from a blind dump. See the
+[full filter reference](https://github.com/launch-it-labs/log-reducer/blob/master/docs/agent-integration.md#filter-parameters)
+for all options (pagination, exclusion, context control, unreduced output).
 ```
 
 ### 4. (Optional) Add the `/logdump` slash command
