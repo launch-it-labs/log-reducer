@@ -157,10 +157,12 @@ Total: ~1,050 tokens. The agent found the root cause (connection pool exhaustion
 | `before` / `after` | Asymmetric context — `before: 50, after: 5` shows 50 lines *before* a match | Finding what *caused* an error |
 | `time_range` | Filter to a time window using timestamps from a prior query | Zooming into a specific incident |
 | `not_grep` | Exclude lines matching a pattern, even if they match an inclusion filter | Removing known noise (health checks, heartbeats) |
+| `context_level` | Minimum severity for context lines — e.g., `context_level: "warning"` keeps only WARNING+ lines in the before/after window | Cutting noise from context without losing matched lines |
 | `head` | First N lines only | Startup/config logs at the top of a file |
 | `reduce: false` | Skip reduction, return raw lines (filters still applied) | When you need exact original text (commands, config values, error messages) |
+| `query` | Natural language question — Claude extracts only relevant lines (requires `ANTHROPIC_API_KEY`) | When filters aren't enough and you know what you're looking for |
 
-Every response includes a token count header — e.g., `[150 tokens (raw input: 2000 tokens)]` — so the agent can judge whether the reduced output is sufficient or worth re-querying unreduced.
+Every response includes a token count header. When a `level` filter is active, a footer shows filtered-out line counts by level — e.g., `[filtered: 847 debug, 123 info]` — so the agent can judge whether it's over-filtering. — e.g., `[150 tokens (raw input: 2000 tokens)]` — so the agent can judge whether the reduced output is sufficient or worth re-querying unreduced.
 
 These compose with the existing filters (`level`, `grep`, `contains`, `component`, `context`, `tail`). Inclusion filters (`level`, `grep`, `contains`, `component`) combine via OR. `time_range` is an AND scope — it restricts the window, then inclusion filters select within it. `not_grep` is applied as a post-filter exclusion.
 
@@ -177,7 +179,7 @@ Biggest impact first:
 - **Timestamps simplified** — `2024-01-15T14:32:01.123Z` → `14:32:01`
 - **Domain-specific** — pip installs, Docker layers, HTTP access logs, retry blocks, log envelopes each have dedicated collapsers
 
-18 transforms, applied in sequence. Rule-based, deterministic, runs offline. One dependency (`@modelcontextprotocol/sdk`).
+18 transforms, applied in sequence. Rule-based, deterministic, no API calls required. One dependency (`@modelcontextprotocol/sdk`). Optional `query` param uses Claude for targeted extraction (requires `ANTHROPIC_API_KEY`).
 
 <details>
 <summary>Stack trace folding in detail</summary>
@@ -214,7 +216,6 @@ For code contributions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Design Decisions
 
-- **Rule-based, no AI** — zero API calls, works offline, deterministic. You get the same output every time, and it runs in milliseconds.
 - **File-path workflow** — the MCP tool accepts file paths so raw logs never enter the AI's context. Only reduced output crosses into the conversation.
 - **Token reduction over line reduction** — stats reported in tokens, not lines, since that's what matters for AI context windows.
 - **Generality over coverage** — new transforms are scored by how broadly they apply. A pattern that only helps one application's logs gets flagged as bias risk and skipped, even if it would improve that specific case.
