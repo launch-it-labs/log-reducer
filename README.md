@@ -131,8 +131,11 @@ When an AI reads a 2,000-line log file, two bad things happen:
 Each step is informed by the previous one. The agent only loads what it needs.
 
 ```
-Step 1: SURVEY → summary: true                              ~50 tokens
-  "8 errors between 13:02-13:15, components: db, auth, api"
+Step 1: SURVEY → reduce_log({ file, tail: 2000 })           ~50 tokens
+  If the reduced output exceeds the threshold (default: 1000 tokens),
+  the tool automatically returns an enhanced summary instead of the full
+  output: unique errors/warnings with counts, time span, and components.
+  Use summary: true to force a survey on any size log.
 
 Step 2: SCAN   → level: "error", limit: 3                   ~200 tokens
   See first 3 errors with context. Note timestamps.
@@ -152,7 +155,7 @@ Total: ~1,050 tokens. The agent found the root cause (connection pool exhaustion
 
 | Parameter | What it does | When to use it |
 |-----------|-------------|----------------|
-| `summary` | Structural overview: line count, time span, error counts, components | **Always first** for logs >100 lines |
+| `summary` | Structural overview: line count, time span, error counts, components | Force a survey on any size log; fires automatically when a no-filter call exceeds the threshold |
 | `limit` / `skip` | Pagination — `limit: 5` returns first 5 matches, `skip: 5, limit: 5` returns matches 6-10 | Scanning errors without loading all of them |
 | `before` / `after` | Asymmetric context — `before: 50, after: 5` shows 50 lines *before* a match | Finding what *caused* an error |
 | `time_range` | Filter to a time window using timestamps from a prior query | Zooming into a specific incident |
@@ -162,7 +165,7 @@ Total: ~1,050 tokens. The agent found the root cause (connection pool exhaustion
 | `reduce: false` | Skip reduction, return raw lines (filters still applied) | When you need exact original text (commands, config values, error messages) |
 | `query` | Natural language question — Claude extracts only relevant lines (requires `ANTHROPIC_API_KEY`) | When filters aren't enough and you know what you're looking for |
 
-Every response includes a token count header. When a `level` filter is active, a footer shows filtered-out line counts by level — e.g., `[filtered: 847 debug, 123 info]` — so the agent can judge whether it's over-filtering. — e.g., `[150 tokens (raw input: 2000 tokens)]` — so the agent can judge whether the reduced output is sufficient or worth re-querying unreduced.
+Every response includes a token count header — e.g., `[150 tokens (raw input: 2000 tokens)]`. When a `level` filter is active, a footer also shows filtered-out line counts by level — e.g., `[filtered: 847 debug, 123 info]` — so the agent can judge whether it's over-filtering.
 
 These compose with the existing filters (`level`, `grep`, `contains`, `component`, `context`, `tail`). Inclusion filters (`level`, `grep`, `contains`, `component`) combine via OR. `time_range` is an AND scope — it restricts the window, then inclusion filters select within it. `not_grep` is applied as a post-filter exclusion.
 
