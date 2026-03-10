@@ -34,13 +34,18 @@ reduce_log({ file: "app.log", tail: 2000, query: "what caused the OOM" })       
 
 For a typical application log, `tail: 200` usually stays under threshold. Denser logs (HTTP access logs, debug traces) may exceed it even at `tail: 100`. When over threshold without filters, add `level: "error"` or use `summary: true`.
 
-**Command output rule:** Always redirect commands that might produce more than ~20 lines. When in doubt, redirect. The cost of an unnecessary redirect is ~2 seconds. The cost of 500 raw lines entering context is ~5000 tokens — permanently lost.
+**Command output rule:** These commands **always** produce verbose output — always redirect them, no judgment needed:
 
 ```bash
-npm test 2>&1 > /tmp/test-output.log; echo "exit: $?"
+# Always redirect these:
+npm test 2>&1 > /tmp/out.log; echo "exit: $?"
+pytest 2>&1 > /tmp/out.log; echo "exit: $?"
+docker build 2>&1 > /tmp/out.log; echo "exit: $?"
+npx playwright test 2>&1 > /tmp/out.log; echo "exit: $?"
+pip install 2>&1 > /tmp/out.log; echo "exit: $?"
 ```
 
-The `echo "exit: $?"` gives the pass/fail signal immediately. Then call `reduce_log` only if you need details.
+The `echo "exit: $?"` gives the pass/fail signal immediately, before you touch the log. Then call `reduce_log` only if you need details. The cost of a redirect is ~2 seconds. The cost of skipping it is ~5000 tokens — permanently lost.
 
 **When the user needs to provide logs:** never ask them to paste logs. Tell them to type `/logdump` (dumps clipboard to file + auto-reduces) or give a file path. If YOU need a log from the user, say: *"Copy the log to your clipboard and type `/logdump`"*.
 
@@ -93,23 +98,6 @@ Copy `.claude/commands/logdump.md` into the consuming project. This gives users 
 For Mac/Linux projects, edit the command file to use `pbpaste` or `xclip` instead
 of the PowerShell command.
 
-### Pre-command hook (optional but recommended)
-
-Copy `.claude/hooks/check-verbose-commands.sh` into the consuming project and add to `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [{
-      "matcher": "Bash",
-      "hooks": [{ "type": "command", "command": "bash .claude/hooks/check-verbose-commands.sh" }]
-    }]
-  }
-}
-```
-
-The hook intercepts known-verbose commands (`npm test`, `pytest`, `docker build`, etc.) that don't already redirect output, blocks them, and suggests the safe redirected form. Short commands (`git status`, `ls`) are unaffected.
-
 ### Instructions for the AI (add to consuming project's CLAUDE.md)
 
 Add this to your project's `.claude/CLAUDE.md`:
@@ -131,6 +119,11 @@ Use that summary to plan targeted follow-up calls with filters.
 reduce_log({ file: "app.log", tail: 2000 })                          // start here
 reduce_log({ file: "app.log", tail: 200, level: "error" })           // errors only
 reduce_log({ file: "app.log", tail: 200, level: "error", before: 30, context_level: "warning" })  // errors + relevant context only
+
+Always redirect these commands before running them — they always produce verbose output:
+npm test, pytest, docker build, npx playwright test, pip install
+Pattern: <command> 2>&1 > /tmp/out.log; echo "exit: $?"
+Then: reduce_log({ file: "/tmp/out.log", tail: 2000 })
 ```
 
 ## Evaluating pasted log files
