@@ -2,7 +2,14 @@
   "mcpServers": {
     "logreducer": {
       "command": "node",
-      "args": ["out/src/mcp-server.js"]
+      "args": [
+        "out/src/mcp-server.js"
+      ]
     }
+  },
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\Users\\imank\\projects\\logcompressor\\.claude"
+    ]
   }
 }

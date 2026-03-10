@@ -613,7 +613,7 @@ async function runTests(): Promise<void> {
       fail('mcp-threshold-under-returns-output', `Expected output returned: ${JSON.stringify(smallText.slice(0, 300))}`);
     }
 
-    // ── Test 21: large output, no filters → threshold gate with filter hints ──
+    // ── Test 21: large output, no filters → threshold gate with enhanced summary ──
     const gateLog = Array.from({ length: 500 }, (_, i) => {
       const level = i % 50 === 0 ? 'ERROR' : 'INFO';
       return `2024-01-15T10:${String(Math.floor(i / 60) % 60).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}.000Z [${level}] Processing batch ${i} with unique-data-${i}-payload-${Math.random().toString(36).slice(2, 12)}`;
@@ -630,18 +630,18 @@ async function runTests(): Promise<void> {
     }, 10000);
 
     const gateText: string = gateResponse.result?.content?.[0]?.text ?? '';
-    // Should be gated (no actual log content) if tokens > 1000, with filter hints
+    // Should be gated with enhanced summary: unique errors, SUMMARY header, level breakdown
     const gateTokenMatch = gateText.match(/(\d+) tokens.*exceeds.*threshold/);
-    if (gateTokenMatch && gateText.includes('summary: true') && gateText.includes('level:') && gateText.includes('break_threshold')) {
-      pass('mcp-threshold-gate-filter-hints');
+    if (gateTokenMatch && gateText.includes('SUMMARY') && gateText.includes('Errors:')) {
+      pass('mcp-threshold-gate-enhanced-summary');
     } else if (!gateTokenMatch) {
       // Output was under threshold after reduction — acceptable
-      pass('mcp-threshold-gate-filter-hints (output under threshold)');
+      pass('mcp-threshold-gate-enhanced-summary (output under threshold)');
     } else {
-      fail('mcp-threshold-gate-filter-hints', `Expected filter hints: ${JSON.stringify(gateText.slice(0, 400))}`);
+      fail('mcp-threshold-gate-enhanced-summary', `Expected enhanced summary with errors: ${JSON.stringify(gateText.slice(0, 500))}`);
     }
 
-    // ── Test 22: large output with filters → threshold gate with query hint ──
+    // ── Test 22: large output with filters → threshold gate returns output with tip ──
     const filterGateResponse = await sendRpc(proc, rl, {
       jsonrpc: '2.0',
       id: 22,
@@ -654,12 +654,12 @@ async function runTests(): Promise<void> {
 
     const filterGateText: string = filterGateResponse.result?.content?.[0]?.text ?? '';
     const filterGateMatch = filterGateText.match(/(\d+) tokens.*exceeds.*threshold/);
-    if (filterGateMatch && filterGateText.includes('query:') && filterGateText.includes('break_threshold')) {
-      pass('mcp-threshold-gate-query-hint');
+    if (filterGateMatch && filterGateText.includes('TIP:') && filterGateText.includes('Processing batch')) {
+      pass('mcp-threshold-gate-filtered-returns-output');
     } else if (!filterGateMatch) {
-      pass('mcp-threshold-gate-query-hint (output under threshold after filtering)');
+      pass('mcp-threshold-gate-filtered-returns-output (output under threshold after filtering)');
     } else {
-      fail('mcp-threshold-gate-query-hint', `Expected query hint: ${JSON.stringify(filterGateText.slice(0, 400))}`);
+      fail('mcp-threshold-gate-filtered-returns-output', `Expected output with tip: ${JSON.stringify(filterGateText.slice(0, 400))}`);
     }
 
     // ── Test 23: break_threshold bypasses gate ───────────────────────
@@ -723,10 +723,124 @@ async function runTests(): Promise<void> {
     });
 
     const customText: string = customThresholdResponse.result?.content?.[0]?.text ?? '';
-    if (customText.includes('exceeds') && customText.includes('10 threshold')) {
+    if (customText.includes('exceeds') && customText.includes('10 threshold') && customText.includes('SUMMARY')) {
       pass('mcp-custom-threshold');
     } else {
       fail('mcp-custom-threshold', `Expected gate at threshold 10: ${JSON.stringify(customText.slice(0, 300))}`);
+    }
+
+    // ── Test 26: context_level filters out INFO context lines ──────
+    const ctxLevelLog = [
+      '10:00:00 INFO Normal operation 1',
+      '10:00:01 INFO Normal operation 2',
+      '10:00:02 INFO Normal operation 3',
+      '10:00:03 WARNING Memory usage high',
+      '10:00:04 INFO Normal operation 4',
+      '10:00:05 ERROR Crashed!',
+      'Traceback (most recent call last):',
+      '  File "app.py", line 42',
+      '10:00:06 INFO Restarting...',
+      '10:00:07 INFO Back online',
+    ].join('\n');
+
+    const ctxLevelResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 26,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { log_text: ctxLevelLog, level: 'error', before: 5, after: 2, context_level: 'warning' },
+      },
+    });
+
+    const ctxLevelText: string = ctxLevelResponse.result?.content?.[0]?.text ?? '';
+    // Should include the error, warning, and stack trace (no level marker) but NOT the INFO context lines
+    const ctxHasError = ctxLevelText.includes('Crashed');
+    const ctxHasWarning = ctxLevelText.includes('Memory usage high');
+    const ctxHasTrace = ctxLevelText.includes('Traceback');
+    const ctxMissingInfo = !ctxLevelText.includes('Normal operation');
+    if (ctxHasError && ctxHasWarning && ctxHasTrace && ctxMissingInfo) {
+      pass('mcp-context-level-filters-info');
+    } else {
+      fail('mcp-context-level-filters-info',
+        `error=${ctxHasError} warning=${ctxHasWarning} trace=${ctxHasTrace} noInfo=${ctxMissingInfo}: ${JSON.stringify(ctxLevelText.slice(0, 400))}`);
+    }
+
+    // ── Test 27: enhanced summary includes unique errors with counts ──
+    const summaryLog = Array.from({ length: 100 }, (_, i) => {
+      if (i === 20) return '10:00:20 ERROR Connection timeout';
+      if (i === 30) return '10:00:30 ERROR Disk full';
+      if (i === 40) return '10:00:40 ERROR Connection timeout';
+      if (i === 50) return '10:00:50 WARNING Low memory';
+      return `10:00:${String(i % 60).padStart(2, '0')} INFO Request ${i} user_${i % 10} session_${Math.random().toString(36).slice(2, 8)}`;
+    }).join('\n');
+
+    const summaryResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 27,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { log_text: summaryLog, threshold: 50 },  // Low threshold forces summary
+      },
+    });
+
+    const summaryText: string = summaryResponse.result?.content?.[0]?.text ?? '';
+    const hasSummaryHeader = summaryText.includes('SUMMARY');
+    const hasErrMsg = summaryText.includes('Connection timeout');
+    const hasDiskFull = summaryText.includes('Disk full');
+    const hasWarnMsg = summaryText.includes('Low memory');
+    const hasCount = summaryText.includes('[x2]');  // Connection timeout appears twice
+    if (hasSummaryHeader && hasErrMsg && hasDiskFull && hasWarnMsg && hasCount) {
+      pass('mcp-enhanced-summary-unique-messages');
+    } else {
+      fail('mcp-enhanced-summary-unique-messages',
+        `header=${hasSummaryHeader} err=${hasErrMsg} disk=${hasDiskFull} warn=${hasWarnMsg} count=${hasCount}: ${JSON.stringify(summaryText.slice(0, 500))}`);
+    }
+
+    // ── Test 28: no-error log summary shows frequent patterns ────────
+    const noErrorLog = Array.from({ length: 100 }, (_, i) =>
+      `10:00:${String(i % 60).padStart(2, '0')} INFO Processing request ${i} for user_${i % 10}`
+    ).join('\n');
+
+    const noErrResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 28,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { log_text: noErrorLog, threshold: 10 },  // Low threshold forces summary
+      },
+    });
+
+    const noErrText: string = noErrResponse.result?.content?.[0]?.text ?? '';
+    if (noErrText.includes('Frequent patterns') && noErrText.includes('[x')) {
+      pass('mcp-enhanced-summary-frequent-patterns');
+    } else {
+      fail('mcp-enhanced-summary-frequent-patterns',
+        `Expected frequent patterns section: ${JSON.stringify(noErrText.slice(0, 400))}`);
+    }
+
+    // ── Test 29: filters + over threshold returns actual output (not just hints) ──
+    const overFilterResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 29,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { log_text: gateLog, level: 'error', threshold: 5 },  // Very low threshold
+      },
+    });
+
+    const overFilterText: string = overFilterResponse.result?.content?.[0]?.text ?? '';
+    // New behavior: filters + over threshold → returns the actual output with a TIP
+    if (overFilterText.includes('Processing batch') && overFilterText.includes('TIP:')) {
+      pass('mcp-filtered-over-threshold-returns-output');
+    } else if (!overFilterText.match(/exceeds.*threshold/)) {
+      pass('mcp-filtered-over-threshold-returns-output (under threshold)');
+    } else {
+      fail('mcp-filtered-over-threshold-returns-output',
+        `Expected actual output with TIP: ${JSON.stringify(overFilterText.slice(0, 400))}`);
     }
 
   } catch (err: any) {

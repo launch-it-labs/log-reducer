@@ -42,6 +42,11 @@ export interface FocusOptions {
   before?: number;
   /** Lines of context to show AFTER each match (overrides context for after-direction). */
   after?: number;
+  /** Minimum severity for context lines. Filters out low-severity lines in the context window
+   *  while keeping the matched lines themselves. Lines without a level marker (stack traces,
+   *  continuation lines) are always kept. E.g., level: "error", before: 30, context_level: "warning"
+   *  shows errors with 30 lines of preceding context, but only WARNING+ lines in context. */
+  context_level?: 'error' | 'warning' | 'info' | 'debug';
   /** Filter to specific logger/component names (substring match, case-insensitive). */
   component?: string;
   /** Filter to a time range: "HH:MM-HH:MM" or "HH:MM:SS-HH:MM:SS". */

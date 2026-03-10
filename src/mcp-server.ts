@@ -42,9 +42,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         '2. NEVER read raw log files with cat/head/tail/Read — use this tool with a `file` param.\n' +
         '3. Redirect verbose command output to a temp file, then call this tool on it.\n' +
         '4. Always include `tail` (200-2000) to cap input size.\n\n' +
-        'THRESHOLD: Output exceeding the token threshold (default 1000) is gated — you will receive ' +
-        'the token count and specific guidance on how to narrow further. Follow the guidance. ' +
-        'Use break_threshold: true only after reviewing the token cost.',
+        'THRESHOLD: If reduced output exceeds the token threshold (default 1000):\n' +
+        '- No filters: returns an enhanced summary listing unique errors/warnings with counts ' +
+        'and timestamps. Use this to decide which filters to apply next.\n' +
+        '- With filters: returns the output with a tip on how to narrow further.\n' +
+        '- With query + ANTHROPIC_API_KEY: LLM extracts only relevant lines within budget.\n' +
+        'Use break_threshold: true to bypass the gate entirely.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -129,6 +132,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
               'Lines of context AFTER each match. Use large values to see consequences/cascading effects. ' +
               'Overrides context for the after-direction only.',
           },
+          context_level: {
+            type: 'string',
+            enum: ['error', 'warning', 'info', 'debug'],
+            description:
+              'Minimum severity for CONTEXT lines (not match lines). Filters out low-severity lines in ' +
+              'the before/after context window while keeping matched lines and lines without a level marker ' +
+              '(stack traces, continuation lines). E.g., level: "error", before: 30, context_level: "warning" ' +
+              'shows errors with 30 lines of preceding context but only WARNING+ context lines.',
+          },
           not_grep: {
             type: 'string',
             description:
@@ -199,6 +211,7 @@ interface ReduceArgs {
   context?: number;
   before?: number;
   after?: number;
+  context_level?: 'error' | 'warning' | 'info' | 'debug';
   not_grep?: string;
   limit?: number;
   skip?: number;
@@ -364,6 +377,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (args.context !== undefined) focus.context = args.context;
   if (args.before !== undefined) focus.before = args.before;
   if (args.after !== undefined) focus.after = args.after;
+  if (args.context_level) focus.context_level = args.context_level;
   if (args.not_grep) focus.not_grep = args.not_grep;
   if (args.limit !== undefined) focus.limit = args.limit;
   if (args.skip !== undefined) focus.skip = args.skip;
@@ -415,50 +429,63 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   // ── Stage 3: Threshold gate ──────────────────────────────────────
 
   if (outputTokens > threshold && !args.break_threshold) {
-    let hint: string;
+
+    if (!hasFocus && !args.query) {
+      // No filters used → return enhanced summary with unique errors/warnings.
+      // The summary is built from raw input lines so it shows true counts.
+      const summaryText = buildSummary(logText.split('\n'));
+      const preamble =
+        `[${outputTokens} tokens reduced (raw: ${rawTokens}) exceeds ${threshold} threshold.]\n\n`;
+
+      return {
+        content: [{ type: 'text' as const, text: preamble + summaryText }],
+      };
+    }
 
     if (queryFailed) {
       // Query was attempted but failed (no API key or API error).
-      // Return the output anyway — don't block the AI for our infra issue.
-      // But include a note about the key.
+      // Return the output — don't block the AI. Include a note.
       const preamble = shouldReduce
-        ? `[${outputTokens} tokens (raw: ${rawTokens}). query was requested but ANTHROPIC_API_KEY is not configured for this MCP server.]\n` +
-          'NOTE: $1, $2 etc. are parameterized values. [x8] = collapsed lines.\n\n'
-        : `[${outputTokens} tokens (unreduced). query was requested but ANTHROPIC_API_KEY is not configured for this MCP server.]\n\n`;
+        ? `[${outputTokens} tokens (raw: ${rawTokens}).]\n` +
+          'NOTE: $1, $2 etc. are parameterized values. [x8] = collapsed lines.\n' +
+          'TIP: Setting ANTHROPIC_API_KEY on this MCP server would enable smart extraction to fit within threshold.\n\n'
+        : `[${outputTokens} tokens (unreduced).]\n` +
+          'TIP: Setting ANTHROPIC_API_KEY on this MCP server would enable smart extraction to fit within threshold.\n\n';
 
       return {
         content: [{ type: 'text' as const, text: preamble + output }],
       };
     }
 
-    if (!hasFocus && !args.query) {
-      // No filters used — teach about filters
-      hint =
-        `[${outputTokens} tokens (raw: ${rawTokens}) exceeds ${threshold} threshold. Narrow with filters:]\n` +
-        '  summary: true                  — structural overview (~50 tokens), start here\n' +
-        '  level: "error"                 — filter by severity\n' +
-        '  grep: "pattern"                — regex search\n' +
-        '  component: "module"            — filter by module name\n' +
-        '  time_range: "HH:MM-HH:MM"     — filter by time window\n' +
-        '  limit: 5                       — cap matched lines\n' +
-        '  break_threshold: true          — bypass and retrieve full output';
-    } else if (!args.query) {
-      // Filters used but still over — teach about query
-      hint =
-        `[${outputTokens} tokens (raw: ${rawTokens}) exceeds ${threshold} threshold after filtering.]\n` +
-        '  query: "your question here"    — LLM extracts only relevant lines (~200 tokens)\n' +
-        '  Add more filters (time_range, grep, limit) to narrow further\n' +
-        '  break_threshold: true          — bypass and retrieve full output';
-      if (!hasApiKey) {
-        hint += '\n  (query requires ANTHROPIC_API_KEY on the MCP server)';
+    // Filters used, still over threshold, no query attempted
+    if (!args.query) {
+      const preamble = shouldReduce
+        ? `[${outputTokens} tokens (raw: ${rawTokens}) exceeds ${threshold} threshold after filtering.]\n` +
+          'NOTE: $1, $2 etc. are parameterized values. [x8] = collapsed lines.\n'
+        : `[${outputTokens} tokens (unreduced) exceeds ${threshold} threshold after filtering.]\n`;
+
+      let tip: string;
+      if (hasApiKey) {
+        tip = 'TIP: Add query: "your question" to extract only relevant lines via LLM.\n' +
+              '  Or narrow further with: time_range, grep, limit, context_level\n' +
+              '  Or break_threshold: true to bypass.\n\n';
+      } else {
+        tip = 'TIP: Narrow further with: time_range, grep, limit, context_level\n' +
+              '  Or break_threshold: true to bypass.\n' +
+              '  Setting ANTHROPIC_API_KEY would enable query-based smart extraction.\n\n';
       }
-    } else {
-      // Query + filters used, still over — only escape hatch left
-      hint =
-        `[${outputTokens} tokens (raw: ${rawTokens}) exceeds ${threshold} threshold.]\n` +
-        '  Try narrower filters or a more specific query\n' +
-        '  break_threshold: true          — bypass and retrieve full output';
+
+      return {
+        content: [{ type: 'text' as const, text: preamble + tip + output }],
+      };
     }
+
+    // Query + filters used, LLM available but still over (extraction didn't run
+    // because it was under threshold at query time, or some other edge case)
+    const hint =
+      `[${outputTokens} tokens (raw: ${rawTokens}) exceeds ${threshold} threshold.]\n` +
+      '  Try narrower filters or a more specific query\n' +
+      '  break_threshold: true          — bypass and retrieve full output';
 
     return {
       content: [{ type: 'text' as const, text: hint }],
