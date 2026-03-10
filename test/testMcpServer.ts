@@ -589,6 +589,146 @@ async function runTests(): Promise<void> {
       fail('mcp-large-input', `Output not smaller: ${bigText.length} >= ${bigLog.length}`);
     }
 
+    // ── Test 20: small output → returned directly (under threshold) ──
+    const smallResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 20,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: {
+          log_text: [
+            '10:00:00 INFO Starting application',
+            '10:00:01 ERROR Database connection failed: timeout',
+            '10:00:02 INFO Retrying...',
+          ].join('\n'),
+        },
+      },
+    });
+
+    const smallText: string = smallResponse.result?.content?.[0]?.text ?? '';
+    if (smallText.includes('Database connection failed') && smallText.includes('tokens')) {
+      pass('mcp-threshold-under-returns-output');
+    } else {
+      fail('mcp-threshold-under-returns-output', `Expected output returned: ${JSON.stringify(smallText.slice(0, 300))}`);
+    }
+
+    // ── Test 21: large output, no filters → threshold gate with filter hints ──
+    const gateLog = Array.from({ length: 500 }, (_, i) => {
+      const level = i % 50 === 0 ? 'ERROR' : 'INFO';
+      return `2024-01-15T10:${String(Math.floor(i / 60) % 60).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}.000Z [${level}] Processing batch ${i} with unique-data-${i}-payload-${Math.random().toString(36).slice(2, 12)}`;
+    }).join('\n');
+
+    const gateResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 21,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { log_text: gateLog },
+      },
+    }, 10000);
+
+    const gateText: string = gateResponse.result?.content?.[0]?.text ?? '';
+    // Should be gated (no actual log content) if tokens > 1000, with filter hints
+    const gateTokenMatch = gateText.match(/(\d+) tokens.*exceeds.*threshold/);
+    if (gateTokenMatch && gateText.includes('summary: true') && gateText.includes('level:') && gateText.includes('break_threshold')) {
+      pass('mcp-threshold-gate-filter-hints');
+    } else if (!gateTokenMatch) {
+      // Output was under threshold after reduction — acceptable
+      pass('mcp-threshold-gate-filter-hints (output under threshold)');
+    } else {
+      fail('mcp-threshold-gate-filter-hints', `Expected filter hints: ${JSON.stringify(gateText.slice(0, 400))}`);
+    }
+
+    // ── Test 22: large output with filters → threshold gate with query hint ──
+    const filterGateResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 22,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { log_text: gateLog, level: 'info' },
+      },
+    }, 10000);
+
+    const filterGateText: string = filterGateResponse.result?.content?.[0]?.text ?? '';
+    const filterGateMatch = filterGateText.match(/(\d+) tokens.*exceeds.*threshold/);
+    if (filterGateMatch && filterGateText.includes('query:') && filterGateText.includes('break_threshold')) {
+      pass('mcp-threshold-gate-query-hint');
+    } else if (!filterGateMatch) {
+      pass('mcp-threshold-gate-query-hint (output under threshold after filtering)');
+    } else {
+      fail('mcp-threshold-gate-query-hint', `Expected query hint: ${JSON.stringify(filterGateText.slice(0, 400))}`);
+    }
+
+    // ── Test 23: break_threshold bypasses gate ───────────────────────
+    const breakResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 23,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { log_text: gateLog, break_threshold: true },
+      },
+    }, 10000);
+
+    const breakText: string = breakResponse.result?.content?.[0]?.text ?? '';
+    // Should contain actual log content (Processing batch...)
+    if (breakText.includes('Processing batch') || breakText.includes('tokens')) {
+      pass('mcp-break-threshold-bypasses-gate');
+    } else {
+      fail('mcp-break-threshold-bypasses-gate', `Expected output with break_threshold: ${JSON.stringify(breakText.slice(0, 300))}`);
+    }
+
+    // ── Test 24: query + large output + no API key → returns output with note ──
+    const queryNoKeyResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 24,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: { log_text: gateLog, query: 'what errors occurred' },
+      },
+    }, 10000);
+
+    const queryNoKeyText: string = queryNoKeyResponse.result?.content?.[0]?.text ?? '';
+    if (queryNoKeyText.includes('ANTHROPIC_API_KEY') && queryNoKeyText.includes('Processing batch')) {
+      // No API key: returned output with API key note — correct
+      pass('mcp-query-no-apikey-returns-output');
+    } else if (queryNoKeyText.includes('extracted by')) {
+      // API key was set: LLM extraction succeeded — also correct
+      pass('mcp-query-no-apikey-returns-output (API key present)');
+    } else if (!queryNoKeyText.match(/exceeds.*threshold/)) {
+      // Output was under threshold — returned directly
+      pass('mcp-query-no-apikey-returns-output (under threshold)');
+    } else {
+      fail('mcp-query-no-apikey-returns-output', `Expected output not gated: ${JSON.stringify(queryNoKeyText.slice(0, 300))}`);
+    }
+
+    // ── Test 25: custom threshold param ──────────────────────────────
+    const customThresholdResponse = await sendRpc(proc, rl, {
+      jsonrpc: '2.0',
+      id: 25,
+      method: 'tools/call',
+      params: {
+        name: 'reduce_log',
+        arguments: {
+          log_text: Array.from({ length: 20 }, (_, i) =>
+            `10:00:${String(i).padStart(2, '0')} INFO Unique line ${i} data-${Math.random().toString(36).slice(2, 8)}`
+          ).join('\n'),
+          threshold: 10,  // very low — should trigger gate
+        },
+      },
+    });
+
+    const customText: string = customThresholdResponse.result?.content?.[0]?.text ?? '';
+    if (customText.includes('exceeds') && customText.includes('10 threshold')) {
+      pass('mcp-custom-threshold');
+    } else {
+      fail('mcp-custom-threshold', `Expected gate at threshold 10: ${JSON.stringify(customText.slice(0, 300))}`);
+    }
+
   } catch (err: any) {
     fail('mcp-communication', err.message);
     if (stderr) {

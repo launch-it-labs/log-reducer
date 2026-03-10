@@ -41,44 +41,12 @@ Add the following to your project's `.claude/CLAUDE.md` so the AI knows how and 
 ```markdown
 ## Log handling
 
-You have access to the `reduce_log` MCP tool. Use it instead of reading log files directly
-— it cuts 70-90% of tokens while preserving all errors, warnings, and meaningful events.
+Use `reduce_log` instead of Read/cat/head/tail for any log file. Always include `tail` (200-2000).
+Redirect verbose command output to a file first, then reduce it. Never ask users to paste logs
+— tell them to type `/logdump` or give a file path.
 
-### Rules
-
-1. **Use `reduce_log` instead of Read/cat/head/tail for any log file.**
-   ```
-   reduce_log({ file: "app.log", tail: 200, level: "error" })
-   ```
-2. **Use `grep` or `level` to filter.** Don't load the whole log when you only need errors.
-3. **Redirect verbose command output to a file first**, then reduce it:
-   ```
-   npm test 2>&1 > /tmp/test.log
-   reduce_log({ file: "/tmp/test.log", tail: 200, level: "error" })
-   ```
-4. **Never ask users to paste logs into chat.** Tell them to type `/logdump` or give a file path.
-5. **Always include `tail`** (200-2000) to cap input size.
-
-### Useful filters
-
-    reduce_log({ file: "f", tail: 200, level: "error" })              // errors only
-    reduce_log({ file: "f", tail: 200, grep: "timeout|connection" })  // regex search
-    reduce_log({ file: "f", tail: 200, contains: "export_123" })      // literal string
-    reduce_log({ file: "f", tail: 200, component: "database" })       // filter by module
-    reduce_log({ file: "f", tail: 2000, summary: true })              // structural overview (~50 tokens)
-
-### Advanced: the funnel pattern
-
-For large logs (500+ lines), investigate in steps instead of loading everything at once:
-
-1. **SURVEY**: `summary: true` → get error counts, timestamps, components (~50 tokens)
-2. **SCAN**: `level: "error", limit: 5` → see first 5 errors (~200 tokens)
-3. **ZOOM**: `time_range: "13:02:30-13:02:45", before: 50` → context around a specific error (~500 tokens)
-4. **TRACE**: `grep: "pool|conn", time_range: "13:00-13:05", limit: 15` → follow a thread (~300 tokens)
-
-Total: ~1000 tokens instead of 5000+ from a blind dump. See the
-[full filter reference](https://github.com/launch-it-labs/log-reducer/blob/master/docs/agent-integration.md#filter-parameters)
-for all options (pagination, exclusion, context control, unreduced output).
+The tool has a token threshold (default 1000). If output exceeds it, you'll receive specific
+guidance on how to narrow — follow the guidance.
 ```
 
 ### 4. (Optional) Add the `/logdump` slash command
@@ -202,6 +170,31 @@ All filters are optional. Inclusion filters (`level`, `grep`, `contains`, `compo
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `reduce` | boolean | Default `true`. Set to `false` to skip reduction and get raw log lines (focus filters still applied). Use when you need exact original text. Every response includes a token count header so you can judge whether to re-query unreduced |
+
+### Threshold gate
+
+Output exceeding the token threshold (default 1000) is gated — instead of returning the full output, the tool returns the token count and guidance on how to narrow. The driving AI must follow the guidance or explicitly bypass with `break_threshold: true`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `threshold` | number | Token threshold (default 1000). Output exceeding this is gated with guidance |
+| `break_threshold` | boolean | Set `true` to bypass the gate and retrieve full output |
+
+**Behavior when output exceeds threshold**:
+- No filters used → guidance suggests `summary`, `level`, `grep`, `component`, `time_range`, `limit`
+- Filters used but no query → guidance suggests `query` for LLM extraction
+- All options tried → guidance suggests `break_threshold: true`
+
+This design means the tool teaches the driving AI how to reduce tokens at the exact moment it matters, eliminating the need for extensive pre-loaded instructions in CLAUDE.md.
+
+### LLM-powered extraction
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `query` | string | Natural language question. An LLM extracts only lines relevant to the query. Returns actual log lines (prefixed with `>>`) with brief annotations |
+| `query_budget` | number | Max tokens for extraction output (default 200). Increase for complex investigations |
+
+**Requirements**: Requires `ANTHROPIC_API_KEY` environment variable set for the MCP server process. Model defaults to `claude-haiku-4-20250414`, configurable via `LOG_REDUCER_MODEL` env var. If the key is missing, the output is returned with a note about the missing key (the driving AI is never blocked).
 
 ## Chaining with Other MCP Tools
 

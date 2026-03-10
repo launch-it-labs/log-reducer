@@ -8,17 +8,9 @@ This project includes a **reduce_log** MCP tool that reduces log text for AI con
 
 ## Log handling
 
-Use `reduce_log` instead of Read/cat/head/tail for any log file. Use `grep` or `level` to filter — don't load the whole log when you only need errors. Always include `tail` (200-2000) to cap input size.
+Use `reduce_log` instead of Read/cat/head/tail for any log file. Always include `tail` (200-2000) to cap input size. Redirect verbose command output to a file first, then reduce it. Never ask users to paste logs — tell them to type `/logdump` or give a file path.
 
-```
-reduce_log({ file: "app.log", tail: 200, level: "error" })              // errors only
-reduce_log({ file: "app.log", tail: 200, grep: "timeout|connection" })  // regex search
-reduce_log({ file: "app.log", tail: 2000, summary: true })              // structural overview (~50 tokens)
-```
-
-Redirect verbose command output to a file first, then reduce it. Never ask users to paste logs — tell them to type `/logdump` or give a file path.
-
-For large logs (500+ lines), use the funnel pattern: survey (`summary: true`) then scan (`level: "error", limit: 5`) then zoom (`time_range`, `before: 50`) then trace (`grep`, `time_range`). See [full filter reference](docs/agent-integration.md#filter-parameters).
+The tool has a token threshold (default 1000). If output exceeds it, you'll receive guidance on how to narrow — follow the guidance. See [filter reference](docs/agent-integration.md#filter-parameters).
 
 ## Integration guide for consuming projects
 

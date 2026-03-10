@@ -35,29 +35,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'reduce_log',
       description:
-        'Reduces log text for AI consumption (50-90% token reduction) while preserving all semantic value. ' +
-        'Strips noise, deduplicates, shortens IDs/URLs, folds stack traces, compacts access logs.\n\n' +
-        'WHY THIS TOOL EXISTS: Your context window is a finite, non-renewable resource within a session. ' +
-        'Every raw log token that enters context is permanently spent — it cannot be reclaimed. A 500-line ' +
-        'log costs 5,000+ tokens raw but only 250-500 after reduction. That difference is thousands of tokens ' +
-        'of capacity you keep for reasoning, code generation, and helping the user. Protecting context length ' +
-        'directly determines how much useful work you can do before the session degrades.\n\n' +
-        'MANDATORY RULES:\n' +
-        '1. NEVER ask users to paste, copy, or type log output into chat — direct them to save to a file or use /logdump.\n' +
-        '2. NEVER read raw log files with cat/head/tail/Read — use this tool with a `file` parameter.\n' +
-        '3. Redirect verbose command output to a temp file, then call this tool on that file.\n' +
-        '4. Always include `tail` (default 200) to cap input size.\n\n' +
-        'INVESTIGATION STRATEGY — use the funnel pattern for multi-turn debugging:\n' +
-        '  Step 1: SURVEY → summary: true (~50 tokens — get error counts, timestamps, components)\n' +
-        '  Step 2: SCAN → level: "error", limit: 5 (~200 tokens — see the first few errors)\n' +
-        '  Step 3: ZOOM → time_range: "HH:MM:SS-HH:MM:SS", before: 50 (~500 tokens — what caused a specific error)\n' +
-        '  Step 4: TRACE → grep: "pattern", time_range: "..." (~300 tokens — follow a specific thread)\n' +
-        'Each step is informed by the previous one. Total cost: ~1000 tokens instead of 5000+ from a blind dump.\n\n' +
-        'KEY PRINCIPLE: Once data enters your context, it is paid for permanently. Never re-request data you already have. ' +
-        'Each follow-up query should fetch NEW information that narrows your hypothesis, not overlap with prior results.\n\n' +
-        'PAGINATION: Use limit/skip to control how many matches you see. If you asked for limit: 5 and the header says ' +
-        '"showing matches 1-5 of 23 total", you can get the next batch with skip: 5, limit: 5. But usually the ' +
-        'funnel strategy (zoom by timestamp) is more effective than paginating through all matches.',
+        'Reduces log text for AI consumption (50-90% token reduction). ' +
+        'Strips noise, deduplicates, shortens IDs/URLs, folds stack traces.\n\n' +
+        'RULES:\n' +
+        '1. NEVER ask users to paste logs — direct them to save to a file or use /logdump.\n' +
+        '2. NEVER read raw log files with cat/head/tail/Read — use this tool with a `file` param.\n' +
+        '3. Redirect verbose command output to a temp file, then call this tool on it.\n' +
+        '4. Always include `tail` (200-2000) to cap input size.\n\n' +
+        'THRESHOLD: Output exceeding the token threshold (default 1000) is gated — you will receive ' +
+        'the token count and specific guidance on how to narrow further. Follow the guidance. ' +
+        'Use break_threshold: true only after reviewing the token cost.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -170,6 +157,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
               'reproduce a command, read a config value, or see exact error messages that reduction may ' +
               'have parameterized).',
           },
+          query: {
+            type: 'string',
+            description:
+              'Natural language question. An LLM extracts only lines relevant to your query ' +
+              '(returned verbatim, prefixed with >>). Requires ANTHROPIC_API_KEY on the server.',
+          },
+          query_budget: {
+            type: 'number',
+            description:
+              'Max tokens for query extraction output (default 200).',
+          },
+          threshold: {
+            type: 'number',
+            description:
+              'Token threshold (default 1000). Output exceeding this is gated — you receive the token count ' +
+              'and guidance on narrowing. Set break_threshold: true to bypass.',
+          },
+          break_threshold: {
+            type: 'boolean',
+            description:
+              'Set true to bypass the token threshold and retrieve full output.',
+          },
         },
         required: [],
       },
@@ -195,11 +204,98 @@ interface ReduceArgs {
   skip?: number;
   summary?: boolean;
   reduce?: boolean;
+  query?: string;
+  query_budget?: number;
+  threshold?: number;
+  break_threshold?: boolean;
 }
 
 /** Approximate token count using whitespace split. */
 function countTokens(text: string): number {
   return text.split(/\s+/).filter(t => t.length > 0).length;
+}
+
+// ---------------------------------------------------------------------------
+// LLM query extraction
+// ---------------------------------------------------------------------------
+
+const DEFAULT_THRESHOLD = 1000;
+const DEFAULT_QUERY_BUDGET = 200;
+const DEFAULT_QUERY_MODEL = 'claude-haiku-4-20250414';
+
+interface QueryResult {
+  extraction: string;
+  model: string;
+  mechanicalTokens: number;
+  extractedTokens: number;
+}
+
+async function extractWithLLM(
+  mechanicalOutput: string,
+  query: string,
+  budget: number,
+): Promise<QueryResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const model = process.env.LOG_REDUCER_MODEL || DEFAULT_QUERY_MODEL;
+
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY required for query extraction');
+  }
+
+  const mechanicalTokens = countTokens(mechanicalOutput);
+
+  const systemPrompt =
+    'You extract log lines relevant to a query. Return ONLY actual log lines from the input, ' +
+    'prefixed with ">> ". Add a one-line annotation (no prefix) before each group explaining relevance. ' +
+    'If nothing matches, return the 5 most anomalous entries. ' +
+    'Err on inclusion — when uncertain, include the line. ' +
+    `Budget: ~${budget} tokens.`;
+
+  const userPrompt = `Query: ${query}\n\nLog:\n${mechanicalOutput}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: Math.max(budget * 4, 1024),
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`LLM API error (${response.status}): ${body}`);
+    }
+
+    const data = (await response.json()) as {
+      content: Array<{ type: string; text: string }>;
+    };
+
+    const extraction = data.content
+      .filter(c => c.type === 'text')
+      .map(c => c.text)
+      .join('\n');
+
+    return {
+      extraction,
+      model,
+      mechanicalTokens,
+      extractedTokens: countTokens(extraction),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /** Read log text from file or argument, applying tail if requested. */
@@ -274,38 +370,111 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   const hasFocus = !!(focus.level || focus.grep || focus.contains || focus.component || focus.time_range);
   const shouldReduce = args.reduce !== false;
+  const threshold = args.threshold ?? DEFAULT_THRESHOLD;
+  const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
+
+  // ── Stage 1: Compute output ──────────────────────────────────────
+
+  let output: string;
+  const rawTokens = countTokens(logText);
 
   if (shouldReduce) {
-    // Normal path: reduce then optionally filter
-    const reduced = minify(logText, undefined, hasFocus ? focus : undefined);
-    const reducedTokens = countTokens(reduced);
-    const rawTokens = countTokens(logText);
-
-    const preamble =
-      `[${reducedTokens} tokens (raw input: ${rawTokens} tokens). ` +
-      'Re-query with reduce: false to get unreduced output if needed.]\n' +
-      'NOTE: {N}, {N1}, $1, $2 etc. are parameterized values — the legend after "|" shows ' +
-      'originals. [x8] = 8 collapsed lines. "[... N lines omitted ...]" = focus-filter gaps.\n\n';
-
-    return {
-      content: [{ type: 'text' as const, text: preamble + reduced }],
-    };
+    output = minify(logText, undefined, hasFocus ? focus : undefined);
   } else {
-    // reduce: false — skip reduction pipeline, only apply focus filters on raw input
-    let output: string;
+    output = hasFocus ? applyFocus(logText, focus) : logText;
+  }
 
-    if (hasFocus) {
-      output = applyFocus(logText, focus);
+  let outputTokens = countTokens(output);
+
+  // ── Stage 2: Query extraction (if requested and output is large) ─
+
+  let queryFailed = false;
+  if (args.query && outputTokens > threshold) {
+    if (hasApiKey) {
+      try {
+        const budget = args.query_budget ?? DEFAULT_QUERY_BUDGET;
+        const result = await extractWithLLM(output, args.query, budget);
+
+        const preamble =
+          `[${result.extractedTokens} tokens extracted by ${result.model} ` +
+          `(mechanical: ${outputTokens} tokens, raw: ${rawTokens} tokens). ` +
+          `Query: "${args.query}".]\n\n`;
+
+        return {
+          content: [{ type: 'text' as const, text: preamble + result.extraction }],
+        };
+      } catch {
+        queryFailed = true;
+        // Fall through to threshold gate with mechanical output
+      }
     } else {
-      output = logText;
+      queryFailed = true;
+    }
+  }
+
+  // ── Stage 3: Threshold gate ──────────────────────────────────────
+
+  if (outputTokens > threshold && !args.break_threshold) {
+    let hint: string;
+
+    if (queryFailed) {
+      // Query was attempted but failed (no API key or API error).
+      // Return the output anyway — don't block the AI for our infra issue.
+      // But include a note about the key.
+      const preamble = shouldReduce
+        ? `[${outputTokens} tokens (raw: ${rawTokens}). query was requested but ANTHROPIC_API_KEY is not configured for this MCP server.]\n` +
+          'NOTE: $1, $2 etc. are parameterized values. [x8] = collapsed lines.\n\n'
+        : `[${outputTokens} tokens (unreduced). query was requested but ANTHROPIC_API_KEY is not configured for this MCP server.]\n\n`;
+
+      return {
+        content: [{ type: 'text' as const, text: preamble + output }],
+      };
     }
 
-    const tokens = countTokens(output);
-    const header = `[${tokens} tokens (unreduced)]\n\n`;
+    if (!hasFocus && !args.query) {
+      // No filters used — teach about filters
+      hint =
+        `[${outputTokens} tokens (raw: ${rawTokens}) exceeds ${threshold} threshold. Narrow with filters:]\n` +
+        '  summary: true                  — structural overview (~50 tokens), start here\n' +
+        '  level: "error"                 — filter by severity\n' +
+        '  grep: "pattern"                — regex search\n' +
+        '  component: "module"            — filter by module name\n' +
+        '  time_range: "HH:MM-HH:MM"     — filter by time window\n' +
+        '  limit: 5                       — cap matched lines\n' +
+        '  break_threshold: true          — bypass and retrieve full output';
+    } else if (!args.query) {
+      // Filters used but still over — teach about query
+      hint =
+        `[${outputTokens} tokens (raw: ${rawTokens}) exceeds ${threshold} threshold after filtering.]\n` +
+        '  query: "your question here"    — LLM extracts only relevant lines (~200 tokens)\n' +
+        '  Add more filters (time_range, grep, limit) to narrow further\n' +
+        '  break_threshold: true          — bypass and retrieve full output';
+      if (!hasApiKey) {
+        hint += '\n  (query requires ANTHROPIC_API_KEY on the MCP server)';
+      }
+    } else {
+      // Query + filters used, still over — only escape hatch left
+      hint =
+        `[${outputTokens} tokens (raw: ${rawTokens}) exceeds ${threshold} threshold.]\n` +
+        '  Try narrower filters or a more specific query\n' +
+        '  break_threshold: true          — bypass and retrieve full output';
+    }
+
     return {
-      content: [{ type: 'text' as const, text: header + output }],
+      content: [{ type: 'text' as const, text: hint }],
     };
   }
+
+  // ── Stage 4: Return output (under threshold or break_threshold) ──
+
+  const preamble = shouldReduce
+    ? `[${outputTokens} tokens (raw: ${rawTokens}).]\n` +
+      'NOTE: $1, $2 etc. are parameterized values. [x8] = collapsed lines.\n\n'
+    : `[${outputTokens} tokens (unreduced).]\n\n`;
+
+  return {
+    content: [{ type: 'text' as const, text: preamble + output }],
+  };
 });
 
 async function main(): Promise<void> {
