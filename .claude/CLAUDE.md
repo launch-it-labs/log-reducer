@@ -34,15 +34,10 @@ reduce_log({ file: "app.log", tail: 2000, query: "what caused the OOM" })       
 
 For a typical application log, `tail: 200` usually stays under threshold. Denser logs (HTTP access logs, debug traces) may exceed it even at `tail: 100`. When over threshold without filters, add `level: "error"` or use `summary: true`.
 
-**Command output rule:** These commands **always** produce verbose output — always redirect them, no judgment needed:
+**Command output rule:** Any command that runs a test suite, builds/compiles, or installs dependencies always produces verbose output — redirect it without judgment:
 
 ```bash
-# Always redirect these:
-npm test 2>&1 > /tmp/out.log; echo "exit: $?"
-pytest 2>&1 > /tmp/out.log; echo "exit: $?"
-docker build 2>&1 > /tmp/out.log; echo "exit: $?"
-npx playwright test 2>&1 > /tmp/out.log; echo "exit: $?"
-pip install 2>&1 > /tmp/out.log; echo "exit: $?"
+<test/build/install command> 2>&1 > /tmp/out.log; echo "exit: $?"
 ```
 
 The `echo "exit: $?"` gives the pass/fail signal immediately, before you touch the log. Then call `reduce_log` only if you need details. The cost of a redirect is ~2 seconds. The cost of skipping it is ~5000 tokens — permanently lost.
@@ -120,9 +115,8 @@ reduce_log({ file: "app.log", tail: 2000 })                          // start he
 reduce_log({ file: "app.log", tail: 200, level: "error" })           // errors only
 reduce_log({ file: "app.log", tail: 200, level: "error", before: 30, context_level: "warning" })  // errors + relevant context only
 
-Always redirect these commands before running them — they always produce verbose output:
-npm test, pytest, docker build, npx playwright test, pip install
-Pattern: <command> 2>&1 > /tmp/out.log; echo "exit: $?"
+Any test suite, build, or install command always produces verbose output — redirect it:
+<command> 2>&1 > /tmp/out.log; echo "exit: $?"
 Then: reduce_log({ file: "/tmp/out.log", tail: 2000 })
 ```
 
