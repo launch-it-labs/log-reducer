@@ -105,18 +105,57 @@ function lineMatchesTimeRange(line: string, range: [number, number]): boolean {
   return t >= range[0] && t <= range[1];
 }
 
+/** Extract the message portion of a log line (after the level keyword). */
+function extractMessage(line: string, levelMatch: RegExpMatchArray): string {
+  const idx = line.indexOf(levelMatch[1], levelMatch.index);
+  return line.slice(idx + levelMatch[1].length).replace(/^[\s\-:]+/, '').trim();
+}
+
+/** Normalize a message for deduplication (collapse variable parts). */
+function normalizeMessage(msg: string): string {
+  return msg
+    .replace(/\$\d+/g, '$X')
+    .replace(/\b[0-9a-f]{8,}\b/gi, '<id>')
+    .replace(/\b\d{4,}\b/g, '<n>')
+    .replace(/\buser_\d+/g, 'user_X')
+    .replace(/\bsession_\w+/g, 'session_X');
+}
+
+interface UniqueMessage {
+  display: string;       // first occurrence (raw message)
+  normalized: string;    // for dedup
+  count: number;
+  firstTime: string | null;
+  lastTime: string | null;
+}
+
+const MAX_SUMMARY_ERRORS = 20;
+const MAX_SUMMARY_WARNINGS = 10;
+const MAX_FREQUENT_PATTERNS = 5;
+
 /**
- * Build a structural summary of the log: counts, timestamps, components, key events.
- * Costs very few tokens and lets the driving AI plan targeted follow-up queries.
+ * Build a structural summary of the log: counts, timestamps, components, and
+ * unique error/warning messages (first-N by time order, capped).
+ *
+ * When no errors or warnings are found, includes top-N frequent message patterns
+ * so the AI has something actionable even for "boring" logs.
  */
 function buildSummary(lines: string[]): string {
   const levelCounts: Record<string, { count: number; firstTime: string | null; lastTime: string | null }> = {};
   const components = new Set<string>();
   let firstTimestamp: string | null = null;
   let lastTimestamp: string | null = null;
-  const errorTimestamps: string[] = [];
 
-  const COMPONENT_RE = /\[([A-Za-z][\w.-]*)\]|(?:logger|module|component)[=:][\s]*([A-Za-z][\w.-]*)/i;
+  // Unique error/warning message tracking (first-N by time order)
+  const errorMsgs: UniqueMessage[] = [];
+  const warnMsgs: UniqueMessage[] = [];
+  const errorNormSet = new Map<string, number>(); // normalized → index into errorMsgs
+  const warnNormSet = new Map<string, number>();
+
+  // For frequent-patterns fallback (when no errors/warnings)
+  const msgCounts = new Map<string, { display: string; count: number }>();
+
+  const COMPONENT_RE = /\[([A-Za-z][\w.-]*)\]|(?:logger|module|component)[=:][\s]*([A-Za-z][\w.-]*)|(?:^|\s)([a-z]+\.[a-z]+[\w.]*)\s*-/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -129,7 +168,7 @@ function buildSummary(lines: string[]): string {
       lastTimestamp = timeStr;
     }
 
-    // Count levels
+    // Count levels and track unique messages
     const levelMatch = line.match(LEVEL_RE);
     if (levelMatch) {
       const lvl = levelMatch[1].toUpperCase();
@@ -139,18 +178,46 @@ function buildSummary(lines: string[]): string {
         if (!levelCounts[lvl].firstTime) levelCounts[lvl].firstTime = timeStr;
         levelCounts[lvl].lastTime = timeStr;
       }
-      // Track error timestamps for the AI to reference
-      if ((LEVEL_ORDER[lvl.toLowerCase()] ?? 0) >= LEVEL_ORDER['error']) {
-        if (errorTimestamps.length < 20) {
-          errorTimestamps.push(timeStr || `line ~${i + 1}`);
+
+      const msg = extractMessage(line, levelMatch);
+      if (msg.length < 3) continue;
+      const norm = normalizeMessage(msg);
+      const lvlNum = LEVEL_ORDER[lvl.toLowerCase()] ?? 0;
+
+      if (lvlNum >= LEVEL_ORDER['error']) {
+        const existing = errorNormSet.get(norm);
+        if (existing !== undefined) {
+          errorMsgs[existing].count++;
+          if (timeStr) errorMsgs[existing].lastTime = timeStr;
+        } else {
+          const idx = errorMsgs.length;
+          errorMsgs.push({ display: msg, normalized: norm, count: 1, firstTime: timeStr, lastTime: timeStr });
+          errorNormSet.set(norm, idx);
+        }
+      } else if (lvlNum >= LEVEL_ORDER['warning']) {
+        const existing = warnNormSet.get(norm);
+        if (existing !== undefined) {
+          warnMsgs[existing].count++;
+          if (timeStr) warnMsgs[existing].lastTime = timeStr;
+        } else {
+          const idx = warnMsgs.length;
+          warnMsgs.push({ display: msg, normalized: norm, count: 1, firstTime: timeStr, lastTime: timeStr });
+          warnNormSet.set(norm, idx);
         }
       }
+
+      // Track message patterns for frequent-patterns fallback
+      if (!msgCounts.has(norm)) {
+        msgCounts.set(norm, { display: msg, count: 0 });
+      }
+      msgCounts.get(norm)!.count++;
     }
 
     // Extract components
     const compMatch = line.match(COMPONENT_RE);
     if (compMatch) {
-      components.add((compMatch[1] || compMatch[2]).toLowerCase());
+      const comp = (compMatch[1] || compMatch[2] || compMatch[3] || '').toLowerCase();
+      if (comp) components.add(comp);
     }
   }
 
@@ -178,23 +245,72 @@ function buildSummary(lines: string[]): string {
     parts.push('Levels:\n' + levelLines.join('\n'));
   }
 
-  // Error timestamps for follow-up queries
-  if (errorTimestamps.length > 0) {
-    parts.push('Error locations: ' + errorTimestamps.join(', '));
+  // Unique error messages (first-N by time order)
+  if (errorMsgs.length > 0) {
+    parts.push('');
+    parts.push('Errors:');
+    const shown = errorMsgs.slice(0, MAX_SUMMARY_ERRORS);
+    for (const m of shown) {
+      const tr = !m.firstTime ? 'at ?' :
+        m.firstTime === m.lastTime ? `at ${m.firstTime}` : `${m.firstTime}—${m.lastTime}`;
+      const countStr = m.count > 1 ? `[x${m.count}] ` : '';
+      parts.push(`  ${countStr}(${tr}) ${m.display.slice(0, 120)}`);
+    }
+    if (errorMsgs.length > MAX_SUMMARY_ERRORS) {
+      parts.push(`  ... and ${errorMsgs.length - MAX_SUMMARY_ERRORS} more unique errors`);
+    }
+  }
+
+  // Unique warning messages (first-N by time order)
+  if (warnMsgs.length > 0) {
+    parts.push('');
+    parts.push('Warnings:');
+    const shown = warnMsgs.slice(0, MAX_SUMMARY_WARNINGS);
+    for (const m of shown) {
+      const tr = !m.firstTime ? 'at ?' :
+        m.firstTime === m.lastTime ? `at ${m.firstTime}` : `${m.firstTime}—${m.lastTime}`;
+      const countStr = m.count > 1 ? `[x${m.count}] ` : '';
+      parts.push(`  ${countStr}(${tr}) ${m.display.slice(0, 120)}`);
+    }
+    if (warnMsgs.length > MAX_SUMMARY_WARNINGS) {
+      parts.push(`  ... and ${warnMsgs.length - MAX_SUMMARY_WARNINGS} more unique warnings`);
+    }
+  }
+
+  // Frequent patterns fallback — when no errors/warnings, show top patterns
+  if (errorMsgs.length === 0 && warnMsgs.length === 0 && msgCounts.size > 0) {
+    const sorted = [...msgCounts.values()].sort((a, b) => b.count - a.count);
+    const topN = sorted.slice(0, MAX_FREQUENT_PATTERNS);
+    parts.push('');
+    parts.push('Frequent patterns:');
+    for (const p of topN) {
+      parts.push(`  [x${p.count}] ${p.display.slice(0, 100)}`);
+    }
   }
 
   // Components
   if (components.size > 0) {
+    parts.push('');
     parts.push('Components: ' + [...components].sort().join(', '));
   }
 
-  parts.push(
-    '\nUse these timestamps/components in follow-up queries:',
-    '  time_range: "HH:MM:SS-HH:MM:SS" to zoom into a period',
-    '  level: "error" with limit: N to get first N errors',
-    '  component: "name" to filter by module',
-    '  before/after: N for asymmetric context around matches',
-  );
+  // Smart hints — only suggest filters relevant to the content
+  const hints: string[] = [];
+  if (errorMsgs.length > 0 || warnMsgs.length > 0) {
+    hints.push('  level: "error"                  — all errors with context');
+  }
+  hints.push('  grep: "pattern"                 — regex search');
+  if (firstTimestamp) {
+    hints.push('  time_range: "HH:MM:SS-HH:MM:SS" — zoom into a period');
+  }
+  if (components.size > 1) {
+    hints.push('  component: "name"               — filter by module');
+  }
+  hints.push('  break_threshold: true           — bypass gate, return full output');
+
+  parts.push('');
+  parts.push('Narrow with:');
+  parts.push(...hints);
 
   return parts.join('\n');
 }
@@ -276,10 +392,23 @@ function applyFocus(input: string, focus: FocusOptions): string {
   }
 
   // Expand paginated matches with asymmetric context
+  // context_level filters out low-severity lines in the context window while keeping
+  // the matched lines themselves. Lines without a level marker (stack traces, etc.) are always kept.
   const visible = new Set<number>();
+  const matchSet = new Set(paginatedMatches);
   for (const idx of paginatedMatches) {
     for (let j = Math.max(0, idx - ctxBefore); j <= Math.min(lines.length - 1, idx + ctxAfter); j++) {
-      visible.add(j);
+      if (matchSet.has(j)) {
+        visible.add(j); // matched lines always included
+      } else if (focus.context_level) {
+        const lm = lines[j].match(LEVEL_RE);
+        // Include if: no level marker (stack traces, continuation) OR level meets threshold
+        if (!lm || (LEVEL_ORDER[lm[1].toLowerCase()] ?? 1) >= (LEVEL_ORDER[focus.context_level] ?? 1)) {
+          visible.add(j);
+        }
+      } else {
+        visible.add(j);
+      }
     }
   }
 
@@ -305,13 +434,31 @@ function applyFocus(input: string, focus: FocusOptions): string {
     }
   }
 
+  // Filtered-lines footer: when a level filter is active, count excluded lines by level
+  // so the caller can judge whether they're over-filtering.
+  let filteredFooter = '';
+  if (focus.level) {
+    const filteredCounts: Record<string, number> = {};
+    for (let i = 0; i < lines.length; i++) {
+      if (visible.has(i)) continue;
+      const lm = lines[i].match(LEVEL_RE);
+      if (lm) {
+        const lvl = lm[1].toLowerCase() === 'warn' ? 'warning' : lm[1].toLowerCase();
+        filteredCounts[lvl] = (filteredCounts[lvl] ?? 0) + 1;
+      }
+    }
+    const displayOrder = ['debug', 'info', 'warning', 'error', 'critical', 'fatal'];
+    const parts = displayOrder.filter(l => filteredCounts[l]).map(l => `${filteredCounts[l]} ${l}`);
+    if (parts.length > 0) filteredFooter = `\n[filtered: ${parts.join(', ')}]`;
+  }
+
   // Post-focus dedup: collapse consecutive runs of near-identical lines.
   // Focus filtering can expose dense blocks of cascading errors (e.g., 80 lines
   // of "GET /api/X → 401 Unauthorized") that differ only in path/ID fragments.
   // A coarse skeleton collapses these into a single line with a count.
   const dedupedResult = postFocusDedup(result);
 
-  return header + dedupedResult.join('\n');
+  return header + dedupedResult.join('\n') + filteredFooter;
 }
 
 /**

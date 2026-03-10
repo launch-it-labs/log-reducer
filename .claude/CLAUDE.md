@@ -1,5 +1,11 @@
 # Log Reducer — Claude Code Instructions
 
+## Project objective
+
+**Minimize tokens required to communicate the full relevant semantic value of a log file.**
+
+Every design decision should be evaluated against this goal. A feature that saves tokens in log output but costs tokens in documentation, protocol complexity, or AI instruction overhead may be net-negative. Prefer simple, composable primitives over rich options. Surface advanced functionality as hints in responses (e.g. "TIP: use `level: error` to narrow further") rather than pre-loading it into client CLAUDE.md files — documentation has a token cost too.
+
 ## PR workflow
 
 When asked to merge a PR, always use `gh pr merge --merge --admin` without asking for confirmation. Branch protection requires admin override on this repo.
@@ -8,9 +14,31 @@ This project includes a **reduce_log** MCP tool that reduces log text for AI con
 
 ## Log handling
 
-Use `reduce_log` instead of Read/cat/head/tail for any log file. Always include `tail` (200-2000) to cap input size. Redirect verbose command output to a file first, then reduce it. Never ask users to paste logs — tell them to type `/logdump` or give a file path.
+**NEVER ingest raw logs.** A 2000-line log burns 20,000+ tokens of context and drowns out everything else. `reduce_log` reads the file server-side — only the reduced output enters your context. This is the single most important rule for effective log debugging.
 
-The tool has a token threshold (default 1000). If output exceeds it, you'll receive guidance on how to narrow — follow the guidance. See [filter reference](docs/agent-integration.md#filter-parameters).
+Use `reduce_log` instead of Read/cat/head/tail for any log file. Always include `tail` (200-2000) to cap input size. Use `grep` or `level` to filter — don't load the whole log when you only need errors.
+
+```
+reduce_log({ file: "app.log", tail: 2000 })                                     // just call it — auto-summary if large
+reduce_log({ file: "app.log", tail: 200, level: "error" })                      // errors only
+reduce_log({ file: "app.log", tail: 200, level: "error", before: 30, context_level: "warning" })  // errors + relevant context
+reduce_log({ file: "app.log", tail: 200, grep: "timeout|connection" })           // regex search
+reduce_log({ file: "app.log", tail: 2000, summary: true })                      // force structural overview
+reduce_log({ file: "app.log", tail: 2000, query: "what caused the OOM" })       // LLM extraction (needs API key)
+```
+
+**How the threshold gate works** (default: 1000 tokens):
+- **Under threshold** → full reduced output directly.
+- **No filters + over threshold** → enhanced summary (unique errors/warnings with counts, timestamps, components). Use this to plan your next call.
+- **Filters + over threshold** → actual output + TIP on how to narrow further.
+
+For a typical application log, `tail: 200` usually stays under threshold. Denser logs (HTTP access logs, debug traces) may exceed it even at `tail: 100`. When over threshold without filters, add `level: "error"` or use `summary: true`.
+
+Redirect verbose command output to a file first, then reduce it.
+
+**When the user needs to provide logs:** never ask them to paste logs. Tell them to type `/logdump` (dumps clipboard to file + auto-reduces) or give a file path. If YOU need a log from the user, say: *"Copy the log to your clipboard and type `/logdump`"*.
+
+For large logs (500+ lines), use the funnel pattern: blind call (auto-summary) → targeted filter (`level: "error"`, `time_range`) → zoom (`before: 50`, `context_level: "warning"`). See [full filter reference](docs/agent-integration.md#filter-parameters).
 
 ## Integration guide for consuming projects
 
@@ -28,7 +56,13 @@ Add the MCP server to the consuming project's `.claude/settings.json`:
 window, it enters the AI's context as raw text — the MCP cannot un-do that. The whole
 point of the `file` parameter is that only the reduced output enters context.
 
-**Instead, give the AI a file path:**
+**The easiest way: `/logdump`**
+
+Copy the log to your clipboard, then type `/logdump` in the chat. The AI saves your
+clipboard to a temp file and runs `reduce_log` on it automatically. The raw log never
+enters the conversation. This is the recommended workflow for most situations.
+
+**Other ways to provide logs:**
 
 - **Log is already a file on disk** — just say:
   *"check the errors in C:\logs\app.log"* or *"what failed in /var/log/myapp.log"*
@@ -39,15 +73,10 @@ point of the `file` parameter is that only the reduced output enters context.
   ```
   Then tell the AI: *"check the errors in /tmp/test.log"*
 
-- **Log is on your clipboard** — type `/logdump` in the chat.
-  This dumps your clipboard to a file and runs `reduce_log` on it automatically.
-  The raw log never enters the conversation.
-
-  (Or manually: `powershell -command "Get-Clipboard | Set-Content C:\tmp\log.txt"`
-  then tell the AI: *"check errors in C:\tmp\log.txt"*)
-
-The AI is instructed to call `reduce_log({ file: "...", tail: 200, level: "error" })`
-on the path you give it. Only the reduced, filtered output enters the conversation.
+The AI is instructed to call `reduce_log({ file: "...", tail: 2000 })` on the path
+you give it. If the reduced output is small enough, you get it directly. If it's too
+large, you get a summary showing every unique error and warning — then the AI filters
+down to what matters.
 
 ### Slash command for clipboard logs
 
@@ -60,7 +89,26 @@ of the PowerShell command.
 
 ### Instructions for the AI (add to consuming project's CLAUDE.md)
 
-Copy the block from [section 3 above](#3-add-ai-instructions-to-your-claudemd) in `docs/agent-integration.md` into your project's `.claude/CLAUDE.md`.
+Add this to your project's `.claude/CLAUDE.md`:
+
+```markdown
+## Log handling
+
+NEVER read log files with Read/cat/head/tail. Use `reduce_log` with a `file` param — it reads
+the file server-side and only the reduced output enters your context. Raw logs waste thousands
+of tokens and drown out useful information.
+
+When a user needs to share a log, tell them to copy it to their clipboard and type `/logdump`.
+Never ask users to paste logs into the chat.
+
+The tool auto-handles large logs: if the reduced output is small, you get it directly. If it's
+large, you get an enhanced summary listing unique errors/warnings with counts and timestamps.
+Use that summary to plan targeted follow-up calls with filters.
+
+reduce_log({ file: "app.log", tail: 2000 })                          // start here
+reduce_log({ file: "app.log", tail: 200, level: "error" })           // errors only
+reduce_log({ file: "app.log", tail: 200, level: "error", before: 30, context_level: "warning" })  // errors + relevant context only
+```
 
 ## Evaluating pasted log files
 
