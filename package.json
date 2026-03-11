@@ -2,12 +2,47 @@
   "name": "logreducer",
   "description": "MCP tool and CLI that reduces log files for AI consumption — strip noise, deduplicate, shorten IDs, fold stack traces",
   "version": "0.1.0",
+  "mcpName": "io.github.launch-it-labs/log-reducer",
+  "license": "MIT",
+  "author": "Launch It Labs",
+  "homepage": "https://github.com/launch-it-labs/log-reducer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/launch-it-labs/log-reducer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/launch-it-labs/log-reducer/issues"
+  },
+  "keywords": [
+    "mcp",
+    "log",
+    "reduce",
+    "compress",
+    "tokens",
+    "ai",
+    "claude",
+    "llm",
+    "debugging",
+    "cli",
+    "model-context-protocol"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "out/src/**/*.js",
+    "out/src/**/*.d.ts",
+    "README.md",
+    "LICENSE",
+    "docs/"
+  ],
   "bin": {
     "logreducer": "./out/src/cli.js"
   },
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "prepublishOnly": "npm run compile",
     "test": "tsc -p ./ && node out/test/runFixtures.js && node out/test/testMcpServer.js",
     "lint": "eslint src --ext ts",
     "mcp": "node out/src/mcp-server.js",

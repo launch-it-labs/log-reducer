@@ -41,6 +41,11 @@ function parseArgs(argv: string[]): FocusOptions {
 }
 
 function main(): void {
+  if (process.argv.includes('--mcp')) {
+    require('./mcp-server');
+    return;
+  }
+
   const focus = parseArgs(process.argv.slice(2));
   const hasFocus = !!(focus.level || focus.grep || focus.contains);
   const chunks: Buffer[] = [];

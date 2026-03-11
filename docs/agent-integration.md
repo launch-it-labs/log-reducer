@@ -23,17 +23,32 @@ Log Reducer reads the file server-side. Only the reduced output enters the AI's 
 ### 1. Install Log Reducer
 
 ```bash
-git clone https://github.com/launch-it-labs/log-reducer.git
-cd log-reducer
-npm install
-npm run compile
+npm install -g logreducer
 ```
 
-Note the absolute path to `out/src/mcp-server.js` — you'll need it in step 2.
+Or build from source:
+```bash
+git clone https://github.com/launch-it-labs/log-reducer.git
+cd log-reducer
+npm install && npm run compile
+```
 
 ### 2. Register the MCP server
 
 Add the following to your project's `.claude/settings.json` (create the file if it doesn't exist):
+
+```json
+{
+  "mcpServers": {
+    "logreducer": {
+      "command": "npx",
+      "args": ["-y", "logreducer", "--mcp"]
+    }
+  }
+}
+```
+
+Or if you built from source, point to the JS file directly:
 
 ```json
 {
@@ -45,10 +60,6 @@ Add the following to your project's `.claude/settings.json` (create the file if 
   }
 }
 ```
-
-Replace the path with the actual location on your machine, e.g.:
-- macOS/Linux: `"/home/you/tools/log-reducer/out/src/mcp-server.js"`
-- Windows: `"C:/Users/you/tools/log-reducer/out/src/mcp-server.js"`
 
 ### 3. Add AI instructions to your CLAUDE.md
 

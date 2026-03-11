@@ -1,5 +1,9 @@
 # Log Reducer
 
+[![npm version](https://img.shields.io/npm/v/logreducer)](https://www.npmjs.com/package/logreducer)
+[![CI](https://github.com/launch-it-labs/log-reducer/actions/workflows/ci.yml/badge.svg)](https://github.com/launch-it-labs/log-reducer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Your AI coding agent is spending thousands of tokens reading raw logs — DEBUG spam, health checks, duplicate lines, framework stack frames, UUIDs. Those tokens are gone for the rest of the session. The agent has less room to think, generates worse code, and hits its context limit faster.
 
 Log Reducer sits between the log and the AI. It reduces the file down to just the signal — errors, warnings, state changes, unique events — typically cutting 70-90% of tokens. The raw log never enters the AI's context.
@@ -61,7 +65,14 @@ expects an int. Three framework frames, not 95. No `C:\Users\...\.venv\` paths.
 
 ## Setup
 
-### Step 1 — Build Log Reducer
+### Step 1 — Install
+
+```bash
+npm install -g logreducer
+```
+
+<details>
+<summary>Or build from source</summary>
 
 ```bash
 git clone https://github.com/launch-it-labs/log-reducer.git
@@ -69,18 +80,9 @@ cd log-reducer
 npm install && npm run compile
 ```
 
-### Step 2 — Integrate with your project
+</details>
 
-Open your project in Claude Code and say:
-
-> Integrate log-reducer as an MCP tool. The server is at `/path/to/log-reducer/out/src/mcp-server.js`. Follow the integration guide at `/path/to/log-reducer/docs/agent-integration.md`.
-
-Claude Code will register the MCP server, add the right instructions to your CLAUDE.md, and set up the `/logdump` slash command. You can verify it worked by asking: *"What MCP tools do you have?"* — it should list `reduce_log`.
-
-That's it. Your AI agent now reduces logs automatically instead of reading them raw.
-
-<details>
-<summary>Manual setup (if you prefer)</summary>
+### Step 2 — Add MCP server to your project
 
 Add to your project's `.claude/settings.json`:
 
@@ -88,19 +90,18 @@ Add to your project's `.claude/settings.json`:
 {
   "mcpServers": {
     "logreducer": {
-      "command": "node",
-      "args": ["/absolute/path/to/log-reducer/out/src/mcp-server.js"]
+      "command": "npx",
+      "args": ["-y", "logreducer", "--mcp"]
     }
   }
 }
 ```
 
-Copy the [AI instructions block](docs/agent-integration.md#3-add-ai-instructions-to-your-claudemd) into your project's `.claude/CLAUDE.md`.
+Then tell Claude Code: *"Follow the integration guide at https://github.com/launch-it-labs/log-reducer/blob/master/docs/agent-integration.md"* — it will add the right instructions to your CLAUDE.md and set up the `/logdump` slash command. You can verify it worked by asking: *"What MCP tools do you have?"* — it should list `reduce_log`.
 
-Optionally copy `.claude/commands/logdump.md` into your project for a `/logdump` slash command.
+That's it. Your AI agent now reduces logs automatically instead of reading them raw.
 
 See [docs/agent-integration.md](docs/agent-integration.md) for the full guide — filter reference, chaining with other MCPs, and setup for Codex/Copilot.
-</details>
 
 ### Sharing logs
 
@@ -109,12 +110,10 @@ Copy a log to your clipboard, then type `/logdump` in the chat. The raw log is s
 ### CLI (for scripts and piping)
 
 ```bash
-node out/src/cli.js < app.log > reduced.log
-kubectl logs my-pod | node out/src/cli.js
-node out/src/cli.js --level error --context 10 < app.log
+logreducer < app.log > reduced.log
+kubectl logs my-pod | logreducer
+logreducer --level error --context 10 < app.log
 ```
-
-After `npm link`, the `logreducer` command is available globally.
 
 ## Multi-turn investigation
 
