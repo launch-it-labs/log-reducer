@@ -20,20 +20,7 @@ Log Reducer reads the file server-side. Only the reduced output enters the AI's 
 
 ## Quick Start
 
-### 1. Install Log Reducer
-
-```bash
-npm install -g logreducer
-```
-
-Or build from source:
-```bash
-git clone https://github.com/launch-it-labs/log-reducer.git
-cd log-reducer
-npm install && npm run compile
-```
-
-### 2. Register the MCP server
+### 1. Register the MCP server
 
 Add the following to your project's `.claude/settings.json` (create the file if it doesn't exist):
 
@@ -48,20 +35,9 @@ Add the following to your project's `.claude/settings.json` (create the file if 
 }
 ```
 
-Or if you built from source, point to the JS file directly:
+No installation needed — `npx` downloads and runs it automatically.
 
-```json
-{
-  "mcpServers": {
-    "logreducer": {
-      "command": "node",
-      "args": ["/absolute/path/to/log-reducer/out/src/mcp-server.js"]
-    }
-  }
-}
-```
-
-### 3. Add AI instructions to your CLAUDE.md
+### 2. Add AI instructions to your CLAUDE.md
 
 Add the following to your project's `.claude/CLAUDE.md` so the AI knows how and when to use the tool:
 
@@ -88,9 +64,9 @@ Any test suite, build, or install command always produces verbose output — red
 Then: reduce_log({ file: "/tmp/out.log", tail: 2000 })
 ```
 
-### 4. Add the `/logdump` slash command
+### 3. Add the `/logdump` slash command
 
-Copy the file `.claude/commands/logdump.md` from the log-reducer repo into your project's `.claude/commands/` directory. This gives users a `/logdump` command that:
+Copy [`.claude/commands/logdump.md`](https://github.com/launch-it-labs/log-reducer/blob/master/.claude/commands/logdump.md) into your project's `.claude/commands/` directory. This gives users a `/logdump` command that:
 
 1. Dumps the clipboard contents to a temp file
 2. Runs `reduce_log` on it automatically
@@ -149,16 +125,12 @@ The AI agent calls the tool, the server reads the file, runs the reduction pipel
 The CLI reads from stdin and writes to stdout. Any agent that can run shell commands can use it:
 
 ```bash
-node /path/to/log-reducer/out/src/cli.js < app.log > reduced.log
-kubectl logs my-pod | node /path/to/log-reducer/out/src/cli.js
-```
-
-After `npm link` in the log-reducer directory, the `logreducer` command is available globally:
-
-```bash
-cat app.log | logreducer
+logreducer < app.log > reduced.log
+kubectl logs my-pod | logreducer
 logreducer --level error --context 10 < app.log
 ```
+
+Or without installing: `npx logreducer < app.log`
 
 ### What the pipeline does
 
@@ -326,8 +298,8 @@ All filters are optional. Inclusion filters (`level`, `grep`, `contains`, `compo
 {
   "mcpServers": {
     "logreducer": {
-      "command": "node",
-      "args": ["/path/to/log-reducer/out/src/mcp-server.js"],
+      "command": "npx",
+      "args": ["-y", "logreducer", "--mcp"],
       "env": {
         "ANTHROPIC_API_KEY": "sk-ant-..."
       }
@@ -458,7 +430,7 @@ Add instructions to `AGENTS.md` (or your agent's instruction file) to use the CL
 
 Before reading log files, reduce them through the log reducer CLI:
 
-    node /path/to/log-reducer/out/src/cli.js < logfile.log > /tmp/reduced.log
+    npx logreducer < logfile.log > /tmp/reduced.log
 
 Then read /tmp/reduced.log instead of the raw file. This typically reduces token count by 70-90%.
 ```
@@ -472,7 +444,7 @@ Add instructions to `.github/copilot-instructions.md`:
 
 When analyzing log files, pipe them through the log reducer CLI first:
 
-    node /path/to/log-reducer/out/src/cli.js < logfile.log
+    npx logreducer < logfile.log
 
 This reduces logs by 70-90% while preserving all errors, warnings, and meaningful events.
 ```
@@ -495,8 +467,9 @@ After setup, restart Claude Code in your project directory. You can verify the t
 The log-reducer project includes integration tests that verify the full MCP protocol:
 
 ```bash
-cd /path/to/log-reducer
-npm test
+git clone https://github.com/launch-it-labs/log-reducer.git
+cd log-reducer
+npm install && npm test
 ```
 
 This runs fixture tests (verifying transform output) and MCP server tests (spawning the server, performing the JSON-RPC handshake, and verifying tool listing + log reduction).
