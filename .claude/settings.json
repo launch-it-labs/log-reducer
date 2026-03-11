@@ -1,4 +1,17 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(grep \"^export function\\\\|^function \" c:/Users/imank/projects/logcompressor/src/transforms/*.ts)",
+      "Bash(for f:*)",
+      "Bash(do grep:*)",
+      "Bash(do)",
+      "Read(//c/Users/imank/projects/logcompressor/src/transforms/**)",
+      "Bash(done)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\imank\\projects\\logcompressor\\.claude"
+    ]
+  },
   "mcpServers": {
     "logreducer": {
       "command": "node",
@@ -6,10 +19,5 @@
         "out/src/mcp-server.js"
       ]
     }
-  },
-  "permissions": {
-    "additionalDirectories": [
-      "c:\\Users\\imank\\projects\\logcompressor\\.claude"
-    ]
   }
 }
