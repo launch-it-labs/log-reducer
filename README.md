@@ -65,26 +65,9 @@ expects an int. Three framework frames, not 95. No `C:\Users\...\.venv\` paths.
 
 ## Setup
 
-### Step 1 — Install
+### Step 1 — Add MCP server to your project
 
-```bash
-npm install -g logreducer
-```
-
-<details>
-<summary>Or build from source</summary>
-
-```bash
-git clone https://github.com/launch-it-labs/log-reducer.git
-cd log-reducer
-npm install && npm run compile
-```
-
-</details>
-
-### Step 2 — Add MCP server to your project
-
-Add to your project's `.claude/settings.json`:
+Add to your project's `.claude/settings.json` (no install needed — `npx` handles it):
 
 ```json
 {
@@ -97,11 +80,13 @@ Add to your project's `.claude/settings.json`:
 }
 ```
 
-Then tell Claude Code: *"Follow the integration guide at https://github.com/launch-it-labs/log-reducer/blob/master/docs/agent-integration.md"* — it will add the right instructions to your CLAUDE.md and set up the `/logdump` slash command. You can verify it worked by asking: *"What MCP tools do you have?"* — it should list `reduce_log`.
+### Step 2 — Add AI instructions
 
-That's it. Your AI agent now reduces logs automatically instead of reading them raw.
+Tell Claude Code: *"Follow the integration guide at https://github.com/launch-it-labs/log-reducer/blob/master/docs/agent-integration.md"* — it will add the right instructions to your CLAUDE.md and set up the `/logdump` slash command.
 
-See [docs/agent-integration.md](docs/agent-integration.md) for the full guide — filter reference, chaining with other MCPs, and setup for Codex/Copilot.
+Verify it worked: *"What MCP tools do you have?"* — it should list `reduce_log`.
+
+That's it. Your AI agent now reduces logs automatically instead of reading them raw. See [docs/agent-integration.md](docs/agent-integration.md) for the full guide.
 
 ### Sharing logs
 
