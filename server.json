@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.launch-it-labs/log-reducer",
-  "description": "Reduces log files for AI consumption — 50-90% token reduction via noise filtering, deduplication, stack trace folding, ID shortening, and 18 deterministic transforms. MCP tool + CLI.",
+  "name": "io.github.imankha/log-reducer",
+  "description": "Reduces log files for AI consumption — 50-90% token reduction via 18 deterministic transforms.",
   "repository": {
     "url": "https://github.com/launch-it-labs/log-reducer",
     "source": "github"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "logreducer",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "transport": {
         "type": "stdio"
       }
