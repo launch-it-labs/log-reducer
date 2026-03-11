@@ -104,17 +104,6 @@ Once set up, you don't need to learn any commands or parameters — the AI handl
 
 You can also point the AI at a file: *"check the errors in /var/log/app.log"* — it will call `reduce_log` on it instead of reading it raw.
 
-### Command output (tests, builds, installs)
-
-When the AI runs a command that produces verbose output, it will automatically redirect to a file and reduce it:
-
-```bash
-npm test 2>&1 > /tmp/out.log; echo "exit: $?"
-# then: reduce_log({ file: "/tmp/out.log", tail: 2000 })
-```
-
-You don't need to do anything — the AI is instructed to handle this. If it doesn't, just say: *"redirect output to a file and use reduce_log"*.
-
 ### CLI (for scripts and piping)
 
 You can also use it directly from the command line, outside of an AI session:
