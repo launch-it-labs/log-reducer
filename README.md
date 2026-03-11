@@ -65,9 +65,15 @@ expects an int. Three framework frames, not 95. No `C:\Users\...\.venv\` paths.
 
 ## Setup
 
-### Step 1 — Add MCP server to your project
+### Step 1 — Install
 
-Add to your project's `.claude/settings.json` (no install needed — `npx` handles it):
+```bash
+npm install -g logreducer
+```
+
+### Step 2 — Add MCP server to your project
+
+Add to your project's `.claude/settings.json`:
 
 ```json
 {
@@ -80,7 +86,7 @@ Add to your project's `.claude/settings.json` (no install needed — `npx` handl
 }
 ```
 
-### Step 2 — Add AI instructions
+### Step 3 — Add AI instructions
 
 Tell Claude Code: *"Follow the integration guide at https://github.com/launch-it-labs/log-reducer/blob/master/docs/agent-integration.md"* — it will add the right instructions to your CLAUDE.md and set up the `/logdump` slash command.
 
