@@ -92,13 +92,32 @@ Tell Claude Code: *"Follow the integration guide at https://github.com/launch-it
 
 Verify it worked: *"What MCP tools do you have?"* — it should list `reduce_log`.
 
-That's it. Your AI agent now reduces logs automatically instead of reading them raw. See [docs/agent-integration.md](docs/agent-integration.md) for the full guide.
+That's it. Your AI agent now reduces logs automatically instead of reading them raw.
 
-### Sharing logs
+## How to use
 
-Copy a log to your clipboard, then type `/logdump` in the chat. The raw log is saved to a temp file and reduced automatically — it never enters the AI's context. This is the recommended way to share logs.
+Once set up, you don't need to learn any commands or parameters — the AI handles everything automatically. There are just two things to know:
+
+### Sharing logs with the AI
+
+**Copy a log to your clipboard, then type `/logdump` in the chat.** The raw log is saved to a temp file and reduced automatically — it never enters the AI's context. This is the recommended way to share logs.
+
+You can also point the AI at a file: *"check the errors in /var/log/app.log"* — it will call `reduce_log` on it instead of reading it raw.
+
+### Command output (tests, builds, installs)
+
+When the AI runs a command that produces verbose output, it will automatically redirect to a file and reduce it:
+
+```bash
+npm test 2>&1 > /tmp/out.log; echo "exit: $?"
+# then: reduce_log({ file: "/tmp/out.log", tail: 2000 })
+```
+
+You don't need to do anything — the AI is instructed to handle this. If it doesn't, just say: *"redirect output to a file and use reduce_log"*.
 
 ### CLI (for scripts and piping)
+
+You can also use it directly from the command line, outside of an AI session:
 
 ```bash
 logreducer < app.log > reduced.log
@@ -106,60 +125,13 @@ kubectl logs my-pod | logreducer
 logreducer --level error --context 10 < app.log
 ```
 
-## Multi-turn investigation
+---
 
-The tool isn't just a one-shot reducer. It supports a **funnel pattern** that lets an AI agent investigate a large log file in multiple targeted passes — spending ~1,000 tokens total instead of 5,000+ from a blind dump.
+## How it works
 
-### The problem with one-shot log reading
+Everything below is for the curious — you don't need any of this to use Log Reducer.
 
-When an AI reads a 2,000-line log file, two bad things happen:
-1. **Most of the tokens are noise.** Even after reduction, a full dump includes context the agent doesn't need yet.
-2. **The tokens are permanent.** Once in context, they can't be reclaimed. If the agent later realizes it needed different information, those tokens are wasted.
-
-### The funnel: survey, scan, zoom, trace
-
-Each step is informed by the previous one. The agent only loads what it needs.
-
-```
-Step 1: SURVEY → reduce_log({ file, tail: 2000 })           ~50 tokens
-  If the reduced output exceeds the threshold (default: 1000 tokens),
-  the tool automatically returns an enhanced summary instead of the full
-  output: unique errors/warnings with counts, time span, and components.
-  Use summary: true to force a survey on any size log.
-
-Step 2: SCAN   → level: "error", limit: 3                   ~200 tokens
-  See first 3 errors with context. Note timestamps.
-
-Step 3: ZOOM   → time_range: "13:02:28-13:02:35", before: 50  ~500 tokens
-  50 lines leading up to the first error — the causal chain.
-
-Step 4: TRACE  → grep: "pool|conn", time_range: "13:00-13:05",  ~300 tokens
-                  limit: 15, context: 0
-  Follow the connection pool thread. limit caps matches,
-  context: 0 avoids pulling in noise between them.
-```
-
-Total: ~1,050 tokens. The agent found the root cause (connection pool exhaustion from a batch job) without ever loading the full log.
-
-### Key parameters for investigation
-
-| Parameter | What it does | When to use it |
-|-----------|-------------|----------------|
-| `summary` | Structural overview: line count, time span, error counts, components | Force a survey on any size log; fires automatically when a no-filter call exceeds the threshold |
-| `limit` / `skip` | Pagination — `limit: 5` returns first 5 matches, `skip: 5, limit: 5` returns matches 6-10 | Scanning errors without loading all of them |
-| `before` / `after` | Asymmetric context — `before: 50, after: 5` shows 50 lines *before* a match | Finding what *caused* an error |
-| `time_range` | Filter to a time window using timestamps from a prior query | Zooming into a specific incident |
-| `not_grep` | Exclude lines matching a pattern, even if they match an inclusion filter | Removing known noise (health checks, heartbeats) |
-| `context_level` | Minimum severity for context lines — e.g., `context_level: "warning"` keeps only WARNING+ lines in the before/after window | Cutting noise from context without losing matched lines |
-| `head` | First N lines only | Startup/config logs at the top of a file |
-| `reduce: false` | Skip reduction, return raw lines (filters still applied) | When you need exact original text (commands, config values, error messages) |
-| `query` | Natural language question — Claude extracts only relevant lines (requires `ANTHROPIC_API_KEY`) | When filters aren't enough and you know what you're looking for |
-
-Every response includes a token count header — e.g., `[150 tokens (raw input: 2000 tokens)]`. When a `level` filter is active, a footer also shows filtered-out line counts by level — e.g., `[filtered: 847 debug, 123 info]` — so the agent can judge whether it's over-filtering.
-
-These compose with the existing filters (`level`, `grep`, `contains`, `component`, `context`, `tail`). Inclusion filters (`level`, `grep`, `contains`, `component`) combine via OR. `time_range` is an AND scope — it restricts the window, then inclusion filters select within it. `not_grep` is applied as a post-filter exclusion.
-
-## What it does to your logs
+### What it does to your logs
 
 Biggest impact first:
 
@@ -199,6 +171,40 @@ When consecutive lines share the same structure but differ in specific values, t
 
 </details>
 
+### Multi-turn investigation
+
+The tool isn't just a one-shot reducer. It supports a **funnel pattern** that lets the AI investigate a large log file in multiple targeted passes — spending ~1,000 tokens total instead of 5,000+ from a blind dump. The AI does this automatically, but here's what's happening under the hood:
+
+```
+Step 1: SURVEY → reduce_log({ file, tail: 2000 })           ~50 tokens
+  If the reduced output exceeds the threshold (default: 1000 tokens),
+  the tool automatically returns an enhanced summary instead of the full
+  output: unique errors/warnings with counts, time span, and components.
+
+Step 2: SCAN   → level: "error", limit: 3                   ~200 tokens
+  See first 3 errors with context. Note timestamps.
+
+Step 3: ZOOM   → time_range: "13:02:28-13:02:35", before: 50  ~500 tokens
+  50 lines leading up to the first error — the causal chain.
+
+Step 4: TRACE  → grep: "pool|conn", time_range: "13:00-13:05",  ~300 tokens
+                  limit: 15, context: 0
+  Follow the connection pool thread.
+```
+
+Total: ~1,050 tokens. The agent found the root cause (connection pool exhaustion from a batch job) without ever loading the full log.
+
+See [docs/agent-integration.md](docs/agent-integration.md) for the full parameter reference and filter details.
+
+### Design decisions
+
+- **File-path workflow** — the MCP tool accepts file paths so raw logs never enter the AI's context. Only reduced output crosses into the conversation.
+- **Token reduction over line reduction** — stats reported in tokens, not lines, since that's what matters for AI context windows.
+- **Generality over coverage** — new transforms are scored by how broadly they apply. A pattern that only helps one application's logs gets flagged as bias risk and skipped, even if it would improve that specific case.
+- **Transform order matters** — IDs and timestamps are shortened before dedup so lines differing only by those values become identical. Noise is filtered before prefix factoring so separator lines don't break grouping.
+- **Each transform is independent** — pure function in, string out. Easy to add, test, and reorder without touching the rest of the pipeline.
+- **Minimal dependencies** — pure TypeScript, one runtime dependency (`@modelcontextprotocol/sdk`).
+
 ## Contributing
 
 **The easiest way to contribute is to paste a log file.** Open this project in Claude Code, paste a log into the chat, and the AI will analyze it, identify patterns the pipeline misses, implement high-generality fixes, and create a PR. No code knowledge required — your log becomes a test fixture that makes the tool better for everyone.
@@ -206,16 +212,6 @@ When consecutive lines share the same structure but differ in specific values, t
 You can also [submit a log via GitHub issue](https://github.com/launch-it-labs/log-reducer/issues/new?template=log-sample.yml) if you don't use Claude Code.
 
 For code contributions, see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Design Decisions
-
-- **File-path workflow** — the MCP tool accepts file paths so raw logs never enter the AI's context. Only reduced output crosses into the conversation.
-- **Token reduction over line reduction** — stats reported in tokens, not lines, since that's what matters for AI context windows.
-- **Generality over coverage** — new transforms are scored by how broadly they apply. A pattern that only helps one application's logs gets flagged as bias risk and skipped, even if it would improve that specific case.
-- **Transform order matters** — IDs and timestamps are shortened before dedup so lines differing only by those values become identical. Noise is filtered before prefix factoring so separator lines don't break grouping.
-- **Each transform is independent** — pure function in, string out. Easy to add, test, and reorder without touching the rest of the pipeline.
-- **No ID legend** — replaced IDs get `$1`, `$2` placeholders with no mapping back. The original UUIDs are almost never what you're debugging.
-- **Minimal dependencies** — pure TypeScript, one runtime dependency (`@modelcontextprotocol/sdk`).
 
 ## License
 
