@@ -57,31 +57,24 @@ Add the following to your project's `.claude/CLAUDE.md` so the AI knows how and 
 ```markdown
 ## Log handling
 
-**NEVER ingest raw logs.** A 2000-line log burns 20,000+ tokens of context and drowns out
-everything else. `reduce_log` reads the file server-side — only the reduced output enters
-your context. This is the single most important rule for effective log debugging.
+NEVER read log files with Read/cat/head/tail. Use `reduce_log` with a `file` param — it reads
+the file server-side and only the reduced output enters your context. Raw logs waste thousands
+of tokens and drown out useful information.
 
-Use `reduce_log` instead of Read/cat/head/tail for any log file. Always include `tail`
-(200-2000) to cap input size. Use `grep` or `level` to filter — don't load the whole log
-when you only need errors.
+When a user needs to share a log, tell them to copy it to their clipboard and type `/logdump`.
+Never ask users to paste logs into the chat.
 
-reduce_log({ file: "app.log", tail: 2000 })                                     // just call it — auto-summary if large
-reduce_log({ file: "app.log", tail: 200, level: "error" })                      // errors only
-reduce_log({ file: "app.log", tail: 200, level: "error", before: 30, context_level: "warning" })  // errors + relevant context
-reduce_log({ file: "app.log", tail: 200, grep: "timeout|connection" })           // regex search
-reduce_log({ file: "app.log", tail: 2000, summary: true })                      // force structural overview
+The tool auto-handles large logs: if the reduced output is small, you get it directly. If it's
+large, you get an enhanced summary listing unique errors/warnings with counts and timestamps.
+Use that summary to plan targeted follow-up calls with filters.
 
-**How the threshold gate works:**
-- **No filters + over threshold** → you get an enhanced summary: unique errors/warnings with
-  counts, timestamps, and components. Use this to plan your next call.
-- **Filters + over threshold** → you get the actual output with a TIP on how to narrow further.
-- **Under threshold** → you get the full reduced output directly.
+reduce_log({ file: "app.log", tail: 2000 })                          // start here
+reduce_log({ file: "app.log", tail: 200, level: "error" })           // errors only
+reduce_log({ file: "app.log", tail: 200, level: "error", before: 30, context_level: "warning" })  // errors + relevant context only
 
-Redirect verbose command output to a file first, then reduce it.
-
-**When the user needs to provide logs:** never ask them to paste logs. Tell them to type
-`/logdump` (dumps clipboard to file + auto-reduces) or give a file path. If YOU need a log
-from the user, say: *"Copy the log to your clipboard and type `/logdump`"*.
+Any test suite, build, or install command always produces verbose output — redirect it:
+<command> 2>&1 > /tmp/out.log; echo "exit: $?"
+Then: reduce_log({ file: "/tmp/out.log", tail: 2000 })
 ```
 
 ### 4. Add the `/logdump` slash command
@@ -158,22 +151,26 @@ logreducer --level error --context 10 < app.log
 
 ### What the pipeline does
 
-The tool applies 14 transforms in sequence:
+The tool applies 18 transforms in sequence:
 
 1. **Strip ANSI** — remove color codes and escape sequences
 2. **Normalize whitespace** — collapse blank lines, trim trailing spaces
 3. **Shorten IDs** — UUIDs, hex strings, JWTs, tokens → `$1`, `$2`, ...
 4. **Shorten URLs** — strip query params, collapse long paths
 5. **Simplify timestamps** — `2024-01-15T14:32:01.123Z` → `14:32:01`
-6. **Filter noise** — remove health checks, heartbeats, devtools artifacts (DEBUG/TRACE kept for causal-chain analysis)
-7. **Strip source locations** — browser console `file.js:line` prefixes
-8. **Collapse pip output** — summarize pip install runs
-9. **Collapse Docker layers** — summarize Docker layer push/export lines
-10. **Factor prefix** — factor out repeated `timestamp - module - LEVEL` prefixes
-11. **Deduplicate** — collapse consecutive similar lines with value templates
-12. **Detect cycles** — collapse repeating multi-line blocks
-13. **Fold stack traces** — collapse framework frames, shorten paths
-14. **Collapse retries** — collapse near-duplicate retry blocks
+6. **Strip envelope** — remove redundant outer wrapper when a log aggregator duplicates timestamp/level already present in the inner log
+7. **Filter noise** — remove health checks, heartbeats, devtools artifacts (DEBUG/TRACE kept for causal-chain analysis)
+8. **Strip source locations** — browser console `file.js:line` prefixes
+9. **Collapse pip output** — summarize pip install runs
+10. **Collapse Docker layers** — summarize Docker layer push/export lines
+11. **Compact access logs** — compress HTTP access log lines to method + path + status + time
+12. **Factor prefix** — factor out repeated `timestamp - module - LEVEL` prefixes
+13. **Deduplicate** — collapse consecutive similar lines with value templates
+14. **Detect cycles** — collapse repeating multi-line blocks
+15. **Merge scattered** — merge non-consecutive duplicates split by interleaved output
+16. **Fold repeated prefix** — fold shared prefix among consecutive lines (e.g. `[Modal]` repeated)
+17. **Fold stack traces** — collapse framework frames, shorten paths
+18. **Collapse retries** — collapse near-duplicate retry blocks
 
 ---
 
@@ -410,23 +407,12 @@ Add this to your CLAUDE.md instructions:
 ```markdown
 ### Chaining with other tools
 
-When running commands or tools that produce log output (Playwright, Docker, test runners,
-build tools), **always redirect output to a temp file** before reading it:
+Any test suite, build, or install command always produces verbose output — redirect it:
+<command> 2>&1 > /tmp/out.log; echo "exit: $?"
+Then: reduce_log({ file: "/tmp/out.log", tail: 2000 })
 
-    # Playwright test output
-    npx playwright test 2>&1 > /tmp/playwright.log
-    reduce_log({ file: "/tmp/playwright.log", tail: 2000 })
-    # auto-summary if large, or direct output if small
-
-    # Docker build output
-    docker build . 2>&1 > /tmp/docker-build.log
-    reduce_log({ file: "/tmp/docker-build.log", tail: 2000 })
-
-    # Any MCP tool that returns verbose text — save to file, then reduce
-    # NEVER read the raw output into context first
-
-This applies to ANY source of verbose output — shell commands, MCP tool results, or
-files on disk. The rule is simple: if it's more than ~20 lines, reduce it first.
+This applies to any source of verbose output — shell commands, MCP tool results, or files
+on disk. NEVER read the raw output into context first.
 ```
 
 ### Why this works
