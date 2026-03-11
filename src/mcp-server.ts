@@ -77,11 +77,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           summary: {
             type: 'boolean',
             description:
-              'RECOMMENDED FIRST CALL. Returns a structural overview instead of log content: ' +
-              'total lines, time span, error/warn/info/debug counts with timestamps, components found, ' +
-              'and timestamps of each error. Costs ~50 tokens. Use this to plan targeted follow-up queries ' +
-              'using the timestamps and components in the summary. Example workflow:\n' +
-              '  1. summary: true → see 8 errors between 13:02-13:15, components: [db, auth, api]\n' +
+              'Force a structural overview: total lines, time span, error/warn/info/debug counts with ' +
+              'timestamps, components found, and timestamps of each error. Costs ~50 tokens. ' +
+              'NOTE: a plain reduce_log({ file, tail }) call already returns this summary automatically ' +
+              'when the reduced output exceeds the threshold — you only need summary: true to force it ' +
+              'on a small log. Use it to plan targeted follow-up queries. Example workflow:\n' +
+              '  1. reduce_log({ file, tail: 2000 }) → auto-summary if large, else direct output\n' +
               '  2. level: "error", limit: 3 → see the first 3 errors with context\n' +
               '  3. time_range: "13:02:30-13:02:45", before: 50 → zoom into what caused error #1',
           },
