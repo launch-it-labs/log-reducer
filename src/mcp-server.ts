@@ -172,13 +172,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           query: {
             type: 'string',
             description:
-              'Natural language question. An LLM extracts only lines relevant to your query ' +
-              '(returned verbatim, prefixed with >>). Requires ANTHROPIC_API_KEY on the server.',
+              'Natural language question. An LLM extracts only the log lines relevant to your query. ' +
+              'Only runs when reduced output exceeds the threshold. ' +
+              'Requires ANTHROPIC_API_KEY injected via the env block in your MCP config:\n' +
+              '  { "logreducer": { "command": "node", "args": ["...mcp-server.js"],\n' +
+              '    "env": { "ANTHROPIC_API_KEY": "sk-ant-..." } } }\n' +
+              'Restart Claude Code after editing the MCP config for env changes to take effect.',
           },
           query_budget: {
             type: 'number',
             description:
-              'Max tokens for query extraction output (default 200).',
+              'Max tokens for query extraction output (default 400). ' +
+              'A single stack trace with context typically needs 300-500 tokens.',
           },
           threshold: {
             type: 'number',
@@ -233,7 +238,7 @@ function countTokens(text: string): number {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_THRESHOLD = 1000;
-const DEFAULT_QUERY_BUDGET = 200;
+const DEFAULT_QUERY_BUDGET = 400;
 const DEFAULT_QUERY_MODEL = 'claude-haiku-4-20250414';
 
 interface QueryResult {
@@ -258,8 +263,8 @@ async function extractWithLLM(
   const mechanicalTokens = countTokens(mechanicalOutput);
 
   const systemPrompt =
-    'You extract log lines relevant to a query. Return ONLY actual log lines from the input, ' +
-    'prefixed with ">> ". Add a one-line annotation (no prefix) before each group explaining relevance. ' +
+    'You extract log lines relevant to a query. Return ONLY actual log lines from the input. ' +
+    'Add a one-line annotation before each group explaining relevance. ' +
     'If nothing matches, return the 5 most anomalous entries. ' +
     'Err on inclusion — when uncertain, include the line. ' +
     `Budget: ~${budget} tokens.`;

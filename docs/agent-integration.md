@@ -309,10 +309,26 @@ All filters are optional. Inclusion filters (`level`, `grep`, `contains`, `compo
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `query` | string | Natural language question. An LLM extracts only lines relevant to your query (returned verbatim, prefixed with `>>`). Only activates when output exceeds the threshold — small outputs are returned directly |
-| `query_budget` | number | Max tokens for extraction output (default 200). Increase for complex investigations |
+| `query` | string | Natural language question. An LLM extracts only lines relevant to your query. Only activates when output exceeds the threshold — small outputs are returned directly |
+| `query_budget` | number | Max tokens for extraction output (default 400). A single stack trace with context typically needs 300-500 tokens |
 
-**Requirements**: `ANTHROPIC_API_KEY` environment variable must be set for the MCP server process. Model defaults to `claude-haiku-4-20250414`, configurable via `LOG_REDUCER_MODEL` env var.
+**Requirements**: `ANTHROPIC_API_KEY` must be injected via the `env` block in your MCP config — it is **not** picked up from the shell environment, since the MCP server runs as a subprocess:
+
+```json
+{
+  "mcpServers": {
+    "logreducer": {
+      "command": "node",
+      "args": ["/path/to/log-reducer/out/src/mcp-server.js"],
+      "env": {
+        "ANTHROPIC_API_KEY": "sk-ant-..."
+      }
+    }
+  }
+}
+```
+
+Restart Claude Code after editing the MCP config for env changes to take effect. Model defaults to `claude-haiku-4-20250414`, configurable via `LOG_REDUCER_MODEL` in the same `env` block.
 
 **Important**: LLM extraction is a premium feature that requires an API key. The tool is fully functional without it — the enhanced summary and mechanical filters handle most use cases. If the key is missing and `query` is used, the output is returned with a note about the missing key. The AI is never blocked.
 
@@ -368,7 +384,7 @@ Combine regex search with time range for surgical extraction.
 reduce_log({ file: "app.log", tail: 2000, query: "what caused the OOM" })
 ```
 
-If mechanical filters aren't enough, use a natural language query. The LLM reads the reduced output and extracts only the relevant lines. This requires `ANTHROPIC_API_KEY` on the server.
+If mechanical filters aren't enough, use a natural language query. The LLM reads the reduced output and extracts only the relevant lines. Requires `ANTHROPIC_API_KEY` in the MCP `env` block — see [Requirements](#requirements) above.
 
 **Most investigations complete in 2 calls** (survey → scan). The funnel pattern ensures you never waste tokens loading content you don't need.
 
