@@ -16,3 +16,4 @@ export { stripEnvelope } from './stripEnvelope';
 export { mergeScattered } from './mergeScattered';
 export { compactAccessLogs } from './compactAccessLogs';
 export { foldRepeatedPrefix } from './foldRepeatedPrefix';
+export { collapseTestStatus } from './collapseTestStatus';

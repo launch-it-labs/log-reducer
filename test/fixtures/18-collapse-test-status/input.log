@@ -1,0 +1,140 @@
+
+> myapp@2.1.4 test
+> jest --ci --runInBand --coverage
+
+PASS src/utils/format.test.ts (2.341s)
+PASS src/utils/validators.test.ts (1.122s)
+PASS src/models/user.test.ts (3.441s)
+PASS src/models/product.test.ts (2.891s)
+PASS src/services/cache.test.ts (1.234s)
+PASS src/utils/crypto.test.ts (0.891s)
+PASS src/middleware/auth.test.ts (4.112s)
+PASS src/utils/pagination.test.ts (0.654s)
+PASS src/models/session.test.ts (2.341s)
+PASS src/services/email.test.ts (3.892s)
+FAIL src/services/payment.test.ts (8.234s)
+FAIL src/api/orders.test.ts (12.445s)
+FAIL src/services/inventory.test.ts (6.781s)
+
+● Payment Service › processPayment › should charge the correct amount
+
+  expect(received).toEqual(expected)
+
+  Expected: {"amount": 4999, "currency": "USD", "status": "succeeded"}
+  Received: {"amount": 4999, "currency": "USD", "status": "pending", "error": "Stripe webhook timeout"}
+
+      46 |   it('should charge the correct amount', async () => {
+      47 |     const result = await paymentService.processPayment({ amount: 4999, currency: 'USD' })
+    > 48 |     expect(result).toEqual({ amount: 4999, currency: 'USD', status: 'succeeded' })
+         |                    ^
+      49 |   })
+      50 |
+      51 |   afterEach(() => jest.clearAllMocks())
+
+      at Object.<anonymous> (src/services/payment.test.ts:48:20)
+
+● Payment Service › processPayment › should retry on network error
+
+  Timeout - Async callback was not invoked within the 5000ms timeout specified by jest.setTimeout.
+
+      54 |   it('should retry on network error', async () => {
+      55 |     mockStripe.charge.mockRejectedValueOnce(new Error('ETIMEDOUT'))
+    > 56 |     const result = await paymentService.processPayment({ amount: 100 })
+         |                    ^
+      57 |     expect(result.status).toBe('succeeded')
+      58 |   })
+
+      at new Timeout (node_modules/jest-jasmine2/build/jasmine/Env.js:186:24)
+
+● Payment Service › refundPayment › should handle partial refunds
+
+  TypeError: paymentService.refundPayment is not a function
+
+      at Object.<anonymous> (src/services/payment.test.ts:78:33)
+
+● Order API › POST /api/orders › should create order and reserve inventory
+
+  Error: connect ECONNREFUSED 127.0.0.1:5432
+
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1278:16)
+
+  The above error occurred while running this test. Did you remember to start the database?
+
+      at Object.<anonymous> (src/api/orders.test.ts:34:5)
+
+● Order API › POST /api/orders › should rollback on payment failure
+
+  Error: connect ECONNREFUSED 127.0.0.1:5432
+
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1278:16)
+
+      at Object.<anonymous> (src/api/orders.test.ts:67:5)
+
+● Order API › GET /api/orders/:id › should return 404 for unknown order
+
+  Error: connect ECONNREFUSED 127.0.0.1:5432
+
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1278:16)
+
+      at Object.<anonymous> (src/api/orders.test.ts:98:5)
+
+● Order API › GET /api/orders/:id › should return 403 for unauthorized user
+
+  Error: connect ECONNREFUSED 127.0.0.1:5432
+
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1278:16)
+
+      at Object.<anonymous> (src/api/orders.test.ts:121:5)
+
+● Order API › DELETE /api/orders/:id › should cancel order and release inventory
+
+  Error: connect ECONNREFUSED 127.0.0.1:5432
+
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1278:16)
+
+      at Object.<anonymous> (src/api/orders.test.ts:144:5)
+
+● Inventory Service › reserveStock › should fail when stock insufficient
+
+  expect(received).toBe(expected)
+
+  Expected: false
+  Received: true
+
+  This assertion failed because reserveStock returned true even though qty=0 in the fixture.
+  Check the beforeEach setup — the mock may not be resetting between tests.
+
+      89 |   it('should fail when stock insufficient', async () => {
+      90 |     mockDb.query.mockResolvedValue({ rows: [{ qty: 0 }] })
+    > 91 |     const result = await inventoryService.reserveStock('prod_abc123', 1)
+         |                    ^
+      92 |     expect(result).toBe(false)
+      93 |   })
+
+      at Object.<anonymous> (src/services/inventory.test.ts:91:22)
+
+● Inventory Service › releaseStock › should increment available quantity
+
+  expect(received).toEqual(expected)
+
+  Expected: {"available": 11, "reserved": 0}
+  Received: {"available": 10, "reserved": 1}
+
+  The release transaction appears to be updating reserved but not incrementing available.
+
+      at Object.<anonymous> (src/services/inventory.test.ts:118:22)
+
+Test Suites: 3 failed, 10 passed, 13 total
+Tests:       10 failed, 67 passed, 77 total
+Snapshots:   0 total
+Time:        48.231s
+Ran all test suites.
+
+Coverage summary:
+Statements   : 72.4% (1203/1662)
+Branches     : 58.1% (312/537)
+Functions    : 81.3% (244/300)
+Lines        : 73.1% (1189/1627)
+
+Coverage threshold not met:
+  branches: 58.1% < 80% minimum

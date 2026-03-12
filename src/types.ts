@@ -23,7 +23,8 @@ export type SettingKey =
   | 'stripEnvelope'
   | 'mergeScattered'
   | 'compactAccessLogs'
-  | 'foldRepeatedPrefix';
+  | 'foldRepeatedPrefix'
+  | 'collapseTestStatus';
 
 /** Maps each transform's settingKey to a boolean toggle. */
 export type PipelineOptions = Record<SettingKey, boolean>;

@@ -18,6 +18,7 @@ import {
   stripEnvelope,
   compactAccessLogs,
   foldRepeatedPrefix,
+  collapseTestStatus,
 } from './transforms';
 
 /**
@@ -34,6 +35,7 @@ const ALL_TRANSFORMS: Transform[] = [
   stripEnvelope,
   filterNoise,
   stripSourceLocations,
+  collapseTestStatus,
   collapsePipOutput,
   collapseDockerLayers,
   compactAccessLogs,
