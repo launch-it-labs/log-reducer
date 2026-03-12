@@ -66,4 +66,4 @@ npm test
 
 ## For Claude Code users
 
-This project includes an MCP server configuration in `.claude/settings.json` that automatically exposes a `reduce_log` tool. See `.claude/CLAUDE.md` for details.
+This project includes an MCP server configuration in `.mcp.json` (project root) that automatically exposes a `reduce_log` tool. See `.claude/CLAUDE.md` for details.

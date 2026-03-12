@@ -73,7 +73,13 @@ npm install -g logreducer
 
 ### Step 2 — Add MCP server to your project
 
-Add to your project's `.claude/settings.json`:
+Run this in your project root:
+
+```bash
+claude mcp add logreducer -s project -- npx -y logreducer --mcp
+```
+
+This writes the config to `.mcp.json` (the file Claude Code reads). Or add it manually:
 
 ```json
 {

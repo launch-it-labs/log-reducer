@@ -50,7 +50,7 @@ For large logs (500+ lines), use the funnel pattern: blind call (auto-summary) â
 
 ### Setup
 
-Add the MCP server to the consuming project's `.claude/settings.json`:
+Add the MCP server to the consuming project's `.mcp.json` (project root):
 
 ```json
 { "mcpServers": { "logreducer": { "command": "node", "args": ["/absolute/path/to/logcompressor/out/src/mcp-server.js"] } } }

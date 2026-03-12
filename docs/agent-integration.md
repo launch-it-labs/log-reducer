@@ -22,7 +22,13 @@ Log Reducer reads the file server-side. Only the reduced output enters the AI's 
 
 ### 1. Register the MCP server
 
-Add the following to your project's `.claude/settings.json` (create the file if it doesn't exist):
+Run this in your project root:
+
+```bash
+claude mcp add logreducer -s project -- npx -y logreducer --mcp
+```
+
+This writes the config to `.mcp.json` in the project root, which is the file Claude Code reads. Or add it manually:
 
 ```json
 {
