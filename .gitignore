@@ -8,3 +8,6 @@ package-lock.json
 .claude/todos/
 screenshots/
 nul
+.mcpregistry_*
+test/fixtures/tmp-eval/
+todo.txt

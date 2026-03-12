@@ -9,7 +9,9 @@
       "Bash(done)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\imank\\projects\\logcompressor\\.claude"
+      "c:\\Users\\imank\\projects\\logcompressor\\.claude",
+      "\\tmp",
+      "c:\\Users\\imank\\projects\\logreducer-test\\logs"
     ]
   },
   "mcpServers": {
