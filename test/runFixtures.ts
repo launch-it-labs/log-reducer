@@ -37,6 +37,7 @@ const TEST_CASES: TestCase[] = [
   { name: '10-real-world-python', transform: null },
   { name: '11-real-world-export', transform: null },
   { name: '16-trace-terminator-timestamps', transform: null },
+  { name: '17-hex-address-frames', transform: null },
 ];
 
 let passed = 0;

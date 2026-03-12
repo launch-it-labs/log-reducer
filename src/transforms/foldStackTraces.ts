@@ -35,10 +35,18 @@ function getIndent(line: string): string {
 // optionally contains service/level info in brackets, up to the last "]".
 const LOG_PREFIX_RE = /^\d[\d:T. -]+\S*.*\]\s*/;
 
+// Bracket-prefixed log lines without a timestamp (e.g., after compressPrefix
+// strips timestamps): "  [ERROR] worker:  1: 0xb7c3e0..."
+const BRACKET_PREFIX_RE = /^\s*\[(?:ERROR|WARN|INFO|DEBUG|TRACE|FATAL)\]\s+\S+:\s*/;
+
 function stripLogPrefix(line: string): string {
   const m = line.match(LOG_PREFIX_RE);
   if (m && m[0].length < line.length) {
     return line.substring(m[0].length);
+  }
+  const m2 = line.match(BRACKET_PREFIX_RE);
+  if (m2 && m2[0].length < line.length) {
+    return line.substring(m2[0].length);
   }
   return line;
 }
@@ -88,6 +96,8 @@ function isCodeLine(line: string, stripped: string, logPrefix?: string): boolean
   }
   if (effectiveLine.length > 0 && !/^\s/.test(effectiveLine) && !/^\|/.test(effectiveLine)) return false;
   if (stripped === '') return false;
+  // Indented log entries with bracket level prefixes are separate log lines, not code
+  if (BRACKET_PREFIX_RE.test(stripped)) return false;
   if (/^[A-Za-z_][\w.]*(?:Error|Exception|Warning):/.test(stripped)) return false;
   if (/^ExceptionGroup:/.test(stripped)) return false;
   if (/^[-+]+\s/.test(stripped) || /^[-+]+$/.test(stripped)) return false;
@@ -138,7 +148,8 @@ function foldFrameUnits(units: FrameUnit[]): string[] {
       const fwStart = j;
       const frameworkNames = new Set<string>();
       while (j < units.length && units[j].isFramework) {
-        const name = getFrameworkName(units[j].lines[0]);
+        const fwLine = units[j].lines[0];
+        const name = getFrameworkName(fwLine) || getFrameworkName(stripLogPrefix(stripExcGroupPrefix(fwLine)));
         if (name) frameworkNames.add(name);
         j++;
       }
@@ -236,9 +247,11 @@ export const foldStackTraces: Transform = {
             i++;
           }
 
+          // Check framework status on both the raw line and prefix-stripped version
+          const strippedFrame = stripLogPrefix(stripExcGroupPrefix(frameLine));
           units.push({
             lines: unitLines,
-            isFramework: isFrameworkFrame(frameLine),
+            isFramework: isFrameworkFrame(frameLine) || isFrameworkFrame(strippedFrame),
           });
         }
 

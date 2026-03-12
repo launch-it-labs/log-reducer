@@ -11,6 +11,7 @@ export const FRAME_PATTERNS = [
   /^\s*File\s+"[^"]+",\s+line\s+\d+/,      // Python
   /^\s*\S+\.go:\d+/,                        // Go
   /^\t+\S+\/\S+:\d+/,                       // Go alternative (tab-indented path)
+  /^\s*\d+:\s+0x[0-9a-f]+\s+/,              // Native crash frames (Node.js OOM, C abort)
 ];
 
 // Framework/internal packages to collapse.
@@ -48,6 +49,8 @@ export const FRAMEWORKS: { pattern: RegExp; name: string | null }[] = [
   // Go
   { pattern: /net\/http/, name: 'net/http' },
   { pattern: /runtime\//, name: 'runtime' },
+  // Native crash frames
+  { pattern: /^\s*\d+:\s+0x[0-9a-f]+\s+/, name: 'native' },
 ];
 
 export function isFrameworkFrame(line: string): boolean {
