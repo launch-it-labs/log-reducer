@@ -123,6 +123,7 @@ function isTraceTerminator(line: string, stripped: string): boolean {
   if (/^\+\s*Exception Group/.test(stripped)) return true;
   if (/^(INFO|ERROR|WARN|DEBUG|TRACE|FATAL)\b/.test(stripped)) return true;
   if (/^\d{4}-\d{2}-\d{2}[\sT]/.test(stripped)) return true;
+  if (/^\d{2}:\d{2}:\d{2}/.test(stripped)) return true;   // simplified HH:MM:SS from simplifyTimestamps
   return false;
 }
 

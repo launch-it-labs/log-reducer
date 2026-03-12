@@ -36,6 +36,7 @@ const TEST_CASES: TestCase[] = [
   { name: '09-full-pipeline', transform: null },
   { name: '10-real-world-python', transform: null },
   { name: '11-real-world-export', transform: null },
+  { name: '16-trace-terminator-timestamps', transform: null },
 ];
 
 let passed = 0;

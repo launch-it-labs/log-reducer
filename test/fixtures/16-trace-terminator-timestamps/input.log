@@ -1,0 +1,85 @@
+2024-01-15T02:00:01.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:00:11.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:00:21.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:00:31.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:00:41.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:00:51.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:01:01.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:01:04.221Z [INFO]  api: POST /api/checkout req=a1b2c3d4 200 312ms
+2024-01-15T02:01:05.112Z [INFO]  api: GET /api/products req=b2c3d4e5 200 44ms
+2024-01-15T02:01:06.334Z [INFO]  api: GET /api/cart req=c3d4e5f6 200 28ms
+2024-01-15T02:01:11.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:01:14.223Z [INFO]  api: POST /api/checkout req=d4e5f6a7 200 298ms
+2024-01-15T02:01:21.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:01:31.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:01:41.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:01:51.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:02:01.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:02:11.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:02:14.001Z [INFO]  deploy: Deployment myapp-v2.3.1 started by CI/CD pipeline
+2024-01-15T02:02:15.100Z [INFO]  deploy: Rolling update: 0/4 pods updated
+2024-01-15T02:02:17.200Z [INFO]  deploy: Rolling update: 1/4 pods updated
+2024-01-15T02:02:19.300Z [INFO]  deploy: Rolling update: 2/4 pods updated
+2024-01-15T02:02:21.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:02:21.400Z [INFO]  deploy: Rolling update: 3/4 pods updated
+2024-01-15T02:02:23.500Z [INFO]  deploy: Rolling update: 4/4 pods updated - complete
+2024-01-15T02:02:24.001Z [INFO]  api: POST /api/checkout req=e5f6a7b8 500 1204ms
+2024-01-15T02:02:24.002Z [ERROR] checkout: Failed to apply discount code: TypeError: Cannot read properties of undefined (reading 'discountPercent')
+    at DiscountService.apply (/app/services/discount.js:34:42)
+    at CheckoutService.calculate (/app/services/checkout.js:89:24)
+    at Router.post (/app/routes/checkout.js:22:18)
+2024-01-15T02:02:24.112Z [INFO]  api: POST /api/checkout req=f6a7b8c9 500 1189ms
+2024-01-15T02:02:24.113Z [ERROR] checkout: Failed to apply discount code: TypeError: Cannot read properties of undefined (reading 'discountPercent')
+    at DiscountService.apply (/app/services/discount.js:34:42)
+    at CheckoutService.calculate (/app/services/checkout.js:89:24)
+    at Router.post (/app/routes/checkout.js:22:18)
+2024-01-15T02:02:24.334Z [INFO]  api: POST /api/checkout req=a7b8c9d0 500 1201ms
+2024-01-15T02:02:24.335Z [ERROR] checkout: Failed to apply discount code: TypeError: Cannot read properties of undefined (reading 'discountPercent')
+    at DiscountService.apply (/app/services/discount.js:34:42)
+    at CheckoutService.calculate (/app/services/checkout.js:89:24)
+    at Router.post (/app/routes/checkout.js:22:18)
+2024-01-15T02:02:25.001Z [INFO]  api: GET /api/products req=b8c9d0e1 200 41ms
+2024-01-15T02:02:25.100Z [INFO]  api: POST /api/checkout req=c9d0e1f2 500 1198ms
+2024-01-15T02:02:25.101Z [ERROR] checkout: Failed to apply discount code: TypeError: Cannot read properties of undefined (reading 'discountPercent')
+    at DiscountService.apply (/app/services/discount.js:34:42)
+    at CheckoutService.calculate (/app/services/checkout.js:89:24)
+    at Router.post (/app/routes/checkout.js:22:18)
+2024-01-15T02:02:25.224Z [INFO]  api: POST /api/checkout req=d0e1f2a3 500 1211ms
+2024-01-15T02:02:25.225Z [ERROR] checkout: Failed to apply discount code: TypeError: Cannot read properties of undefined (reading 'discountPercent')
+    at DiscountService.apply (/app/services/discount.js:34:42)
+    at CheckoutService.calculate (/app/services/checkout.js:89:24)
+    at Router.post (/app/routes/checkout.js:22:18)
+2024-01-15T02:02:25.400Z [WARN]  api: Error rate elevated: 100% of /api/checkout in last 60s (prev: 0%)
+2024-01-15T02:02:25.401Z [WARN]  alerting: PagerDuty alert fired: checkout_error_rate > 10%
+2024-01-15T02:02:26.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:02:26.100Z [INFO]  api: POST /api/checkout req=e1f2a3b4 500 1195ms
+2024-01-15T02:02:26.101Z [ERROR] checkout: Failed to apply discount code: TypeError: Cannot read properties of undefined (reading 'discountPercent')
+    at DiscountService.apply (/app/services/discount.js:34:42)
+    at CheckoutService.calculate (/app/services/checkout.js:89:24)
+    at Router.post (/app/routes/checkout.js:22:18)
+2024-01-15T02:02:26.334Z [INFO]  api: POST /api/checkout req=f2a3b4c5 500 1203ms
+2024-01-15T02:02:26.335Z [ERROR] checkout: Failed to apply discount code: TypeError: Cannot read properties of undefined (reading 'discountPercent')
+    at DiscountService.apply (/app/services/discount.js:34:42)
+    at CheckoutService.calculate (/app/services/checkout.js:89:24)
+    at Router.post (/app/routes/checkout.js:22:18)
+2024-01-15T02:02:31.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:02:36.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:02:38.000Z [INFO]  deploy: Rollback myapp-v2.3.1 -> myapp-v2.3.0 initiated by on-call engineer
+2024-01-15T02:02:39.100Z [INFO]  deploy: Rolling update: 1/4 pods reverted
+2024-01-15T02:02:39.234Z [INFO]  api: POST /api/checkout req=a3b4c5d6 500 1209ms
+2024-01-15T02:02:39.235Z [ERROR] checkout: Failed to apply discount code: TypeError: Cannot read properties of undefined (reading 'discountPercent')
+    at DiscountService.apply (/app/services/discount.js:34:42)
+    at CheckoutService.calculate (/app/services/checkout.js:89:24)
+    at Router.post (/app/routes/checkout.js:22:18)
+2024-01-15T02:02:40.400Z [INFO]  deploy: Rolling update: 2/4 pods reverted
+2024-01-15T02:02:41.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:02:41.600Z [INFO]  deploy: Rolling update: 3/4 pods reverted
+2024-01-15T02:02:42.800Z [INFO]  deploy: Rolling update: 4/4 pods reverted - rollback complete
+2024-01-15T02:02:43.100Z [INFO]  api: POST /api/checkout req=b4c5d6e7 200 287ms
+2024-01-15T02:02:43.500Z [INFO]  api: POST /api/checkout req=c5d6e7f8 200 301ms
+2024-01-15T02:02:43.900Z [INFO]  api: POST /api/checkout req=d6e7f8a9 200 295ms
+2024-01-15T02:02:44.001Z [WARN]  alerting: PagerDuty alert resolved: checkout_error_rate back to normal
+2024-01-15T02:02:51.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:03:01.001Z [INFO]  api: GET /health 200 1ms
+2024-01-15T02:03:11.001Z [INFO]  api: GET /health 200 2ms
+2024-01-15T02:03:21.001Z [INFO]  api: GET /health 200 1ms
