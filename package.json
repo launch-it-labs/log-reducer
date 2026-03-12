@@ -1,7 +1,7 @@
 {
   "name": "logreducer",
   "description": "MCP tool and CLI that reduces log files for AI consumption — strip noise, deduplicate, shorten IDs, fold stack traces",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "mcpName": "io.github.imankha/log-reducer",
   "license": "MIT",
   "author": "Launch It Labs",

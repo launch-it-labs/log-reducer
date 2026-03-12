@@ -137,9 +137,10 @@ Biggest impact first:
 - **Repeating blocks detected** — 5 identical 3-line blocks → 1 block + count
 - **IDs shortened** — UUIDs, hex strings, JWTs, tokens → `$1`, `$2`, ...
 - **Timestamps simplified** — `2024-01-15T14:32:01.123Z` → `14:32:01`
+- **Test output collapsed** — runs of PASS lines → count summary; FAIL lines always preserved
 - **Domain-specific** — pip installs, Docker layers, HTTP access logs, retry blocks, log envelopes each have dedicated collapsers
 
-18 transforms, applied in sequence. Rule-based, deterministic, no API calls required. One dependency (`@modelcontextprotocol/sdk`). Optional `query` param uses Claude for targeted extraction (requires `ANTHROPIC_API_KEY`).
+19 transforms, applied in sequence. Rule-based, deterministic, no API calls required. One dependency (`@modelcontextprotocol/sdk`). Optional `query` param uses Claude for targeted extraction (requires `ANTHROPIC_API_KEY`).
 
 <details>
 <summary>Stack trace folding in detail</summary>

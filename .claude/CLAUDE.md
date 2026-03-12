@@ -233,16 +233,17 @@ This workflow means anyone can contribute by simply pasting a log — the AI han
 6. `stripEnvelope` — remove redundant outer envelope when log aggregator duplicates timestamp/level already in inner log
 7. `filterNoise` — remove health checks, heartbeats, devtools noise, progress bars, Docker boilerplate, pip upgrade notices (DEBUG/TRACE kept — AI uses `level` filter to exclude)
 8. `stripSourceLocations` — browser console `file.js:line` prefixes
-9. `collapsePipOutput` — summarize pip Collecting/Downloading runs into compact package lists, strip elapsed-time prefixes
-10. `collapseDockerLayers` — collapse runs of Docker layer push/export lines into a count with time range
-11. `compactAccessLogs` — compress HTTP access log lines to method + path + status + time, strip boilerplate
-12. `compressPrefix` — factor out repeated log prefixes, strip separators
-13. `deduplicate` — collapse consecutive identical/near-identical lines
-14. `detectCycles` — collapse repeating multi-line blocks
-15. `mergeScattered` — merge non-consecutive duplicate lines split by interleaving
-16. `foldRepeatedPrefix` — fold shared prefix among consecutive lines (e.g. `[Modal]` repeated)
-17. `foldStackTraces` — collapse framework frames, shorten file paths
-18. `collapseRetries` — collapse near-duplicate retry blocks (e.g. Docker rebuild attempts) showing only diffs
+9. `collapseTestStatus` — collapse runs of 3+ consecutive PASS lines (Jest, Go test, pytest) into count; FAIL lines preserved
+10. `collapsePipOutput` — summarize pip Collecting/Downloading runs into compact package lists, strip elapsed-time prefixes
+11. `collapseDockerLayers` — collapse runs of Docker layer push/export lines into a count with time range
+12. `compactAccessLogs` — compress HTTP access log lines to method + path + status + time, strip boilerplate
+13. `compressPrefix` — factor out repeated log prefixes, strip separators
+14. `deduplicate` — collapse consecutive identical/near-identical lines
+15. `detectCycles` — collapse repeating multi-line blocks
+16. `mergeScattered` — merge non-consecutive duplicate lines split by interleaving
+17. `foldRepeatedPrefix` — fold shared prefix among consecutive lines (e.g. `[Modal]` repeated)
+18. `foldStackTraces` — collapse framework frames, shorten file paths, fold native hex-address crash frames
+19. `collapseRetries` — collapse near-duplicate retry blocks (e.g. Docker rebuild attempts) showing only diffs
 
 ## Project structure
 

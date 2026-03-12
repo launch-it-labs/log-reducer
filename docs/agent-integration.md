@@ -140,7 +140,7 @@ Or without installing: `npx logreducer < app.log`
 
 ### What the pipeline does
 
-The tool applies 18 transforms in sequence:
+The tool applies 19 transforms in sequence:
 
 1. **Strip ANSI** — remove color codes and escape sequences
 2. **Normalize whitespace** — collapse blank lines, trim trailing spaces
@@ -150,16 +150,17 @@ The tool applies 18 transforms in sequence:
 6. **Strip envelope** — remove redundant outer wrapper when a log aggregator duplicates timestamp/level already present in the inner log
 7. **Filter noise** — remove health checks, heartbeats, devtools artifacts (DEBUG/TRACE kept for causal-chain analysis)
 8. **Strip source locations** — browser console `file.js:line` prefixes
-9. **Collapse pip output** — summarize pip install runs
-10. **Collapse Docker layers** — summarize Docker layer push/export lines
-11. **Compact access logs** — compress HTTP access log lines to method + path + status + time
-12. **Factor prefix** — factor out repeated `timestamp - module - LEVEL` prefixes
-13. **Deduplicate** — collapse consecutive similar lines with value templates
-14. **Detect cycles** — collapse repeating multi-line blocks
-15. **Merge scattered** — merge non-consecutive duplicates split by interleaved output
-16. **Fold repeated prefix** — fold shared prefix among consecutive lines (e.g. `[Modal]` repeated)
-17. **Fold stack traces** — collapse framework frames, shorten paths
-18. **Collapse retries** — collapse near-duplicate retry blocks
+9. **Collapse test status** — collapse runs of 3+ PASS lines (Jest, Go test, pytest) into count; FAIL lines preserved
+10. **Collapse pip output** — summarize pip install runs
+11. **Collapse Docker layers** — summarize Docker layer push/export lines
+12. **Compact access logs** — compress HTTP access log lines to method + path + status + time
+13. **Factor prefix** — factor out repeated `timestamp - module - LEVEL` prefixes
+14. **Deduplicate** — collapse consecutive similar lines with value templates
+15. **Detect cycles** — collapse repeating multi-line blocks
+16. **Merge scattered** — merge non-consecutive duplicates split by interleaved output
+17. **Fold repeated prefix** — fold shared prefix among consecutive lines (e.g. `[Modal]` repeated)
+18. **Fold stack traces** — collapse framework frames, shorten paths, fold native hex-address crash frames
+19. **Collapse retries** — collapse near-duplicate retry blocks
 
 ---
 

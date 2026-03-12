@@ -112,7 +112,7 @@ src/
 test/
   runFixtures.ts        Fixture test runner
   testMcpServer.ts      MCP server integration tests
-  fixtures/             Test cases (01-strip-ansi through 15-collapse-docker-layers)
+  fixtures/             Test cases (01-strip-ansi through 18-collapse-test-status)
 ```
 
 ### Pipeline Order
@@ -127,16 +127,17 @@ Transforms run in this order (defined in `pipeline.ts`):
 6. **stripEnvelope** — strip redundant log envelope prefixes
 7. **filterNoise** — remove low-signal lines before grouping/dedup
 8. **stripSourceLocations** — remove browser console `file.js:line` prefixes
-9. **collapsePipOutput** — summarize pip install output
-10. **collapseDockerLayers** — collapse Docker layer lines
-11. **compactAccessLogs** — compact HTTP access logs
-12. **compressPrefix** — factor out repeated prefixes
-13. **deduplicate** — collapse consecutive similar lines
-14. **detectCycles** — collapse repeating multi-line blocks
-15. **mergeScattered** — merge non-consecutive duplicate lines
-16. **foldRepeatedPrefix** — fold repeated prefixes among consecutive lines
-17. **foldStackTraces** — collapse framework frames, runs late so it sees deduplicated output
-18. **collapseRetries** — collapse near-duplicate retry blocks
+9. **collapseTestStatus** — collapse runs of 3+ PASS lines (Jest, Go test, pytest) into count; FAIL preserved
+10. **collapsePipOutput** — summarize pip install output
+11. **collapseDockerLayers** — collapse Docker layer lines
+12. **compactAccessLogs** — compact HTTP access logs
+13. **compressPrefix** — factor out repeated prefixes
+14. **deduplicate** — collapse consecutive similar lines
+15. **detectCycles** — collapse repeating multi-line blocks
+16. **mergeScattered** — merge non-consecutive duplicate lines
+17. **foldRepeatedPrefix** — fold repeated prefixes among consecutive lines
+18. **foldStackTraces** — collapse framework frames and native hex-address crash frames, runs late so it sees deduplicated output
+19. **collapseRetries** — collapse near-duplicate retry blocks
 
 Order matters. For example, filterNoise must run before compressPrefix so that separator lines don't break prefix groups, and shortenIds must run before deduplicate so lines differing only by ID are recognized as duplicates.
 
